@@ -1,0 +1,382 @@
+export type Role = 'student' | 'tutor' | 'admin';
+export type EnrollmentType = 'open' | 'approval_required';
+
+export type User = {
+  id?: string;
+  _id?: string;
+  full_name: string;
+  email: string;
+  role: Role;
+  account_status?: 'pending' | 'active' | 'blocked';
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type Course = {
+  _id: string;
+  title: string;
+  description?: string;
+  thumbnail_key?: string;
+  enrollment_type?: EnrollmentType;
+  created_by?: string | Pick<User, '_id' | 'full_name' | 'role'>;
+  is_deleted?: boolean;
+  deleted_at?: string | null;
+  deleted_by?: string | Pick<User, '_id' | 'full_name' | 'role'> | null;
+};
+
+export type Enrollment = {
+  _id: string;
+  user_id: string | Pick<User, '_id' | 'full_name' | 'email' | 'role'>;
+  course_id: Course | string;
+  status: 'pending' | 'active';
+  requested_at?: string;
+  approved_at?: string | null;
+};
+
+export type Lesson = {
+  _id: string;
+  course_id: string;
+  title: string;
+  content?: string;
+  video_key?: string;
+  document_key?: string;
+  order_index: number;
+};
+
+export type CourseProgress = {
+  course_id: string;
+  progress_percent: number;
+  completed_lessons: number;
+  total_lessons: number;
+};
+
+export type Quiz = {
+  _id: string;
+  course_id: string;
+  title: string;
+  description?: string;
+  time_limit: number;
+};
+
+export type QuizAnswer = {
+  _id: string;
+  content: string;
+  is_correct?: boolean;
+};
+
+export type QuizQuestion = {
+  _id: string;
+  content: string;
+  question_type: 'single_choice' | 'multiple_choice';
+  point: number;
+  answers: QuizAnswer[];
+};
+
+export type QuestionInput = {
+  content: string;
+  question_type: 'single_choice' | 'multiple_choice';
+  point: number;
+  answers: Array<{
+    content: string;
+    is_correct: boolean;
+  }>;
+};
+
+export type QuizStart = {
+  attempt_id: string;
+  started_at: string;
+  expires_at: string;
+  time_limit: number;
+  questions: QuizQuestion[];
+};
+
+export type PresignedDownload = {
+  download_url: string;
+  file_key: string;
+  expires_in: number;
+};
+
+export type AdminUser = User & {
+  _id: string;
+  account_status: 'pending' | 'active' | 'blocked';
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type AuthResponse = {
+  access_token: string;
+  token_type: string;
+  user: User;
+};
+
+type RequestOptions = Omit<RequestInit, 'body'> & {
+  body?: unknown;
+  auth?: boolean;
+};
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
+const TOKEN_KEY = 'learnsphere_access_token';
+const USER_KEY = 'learnsphere_user';
+
+export function getToken() {
+  return window.localStorage.getItem(TOKEN_KEY);
+}
+
+export function getStoredUser(): User | null {
+  const value = window.localStorage.getItem(USER_KEY);
+  if (!value) return null;
+
+  try {
+    return JSON.parse(value) as User;
+  } catch {
+    return null;
+  }
+}
+
+export function saveSession(auth: AuthResponse) {
+  window.localStorage.setItem(TOKEN_KEY, auth.access_token);
+  window.localStorage.setItem(USER_KEY, JSON.stringify(auth.user));
+}
+
+export function clearSession() {
+  window.localStorage.removeItem(TOKEN_KEY);
+  window.localStorage.removeItem(USER_KEY);
+}
+
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const headers = new Headers(options.headers);
+  const hasBody = options.body !== undefined;
+
+  if (hasBody && !(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  if (options.auth !== false) {
+    const token = getToken();
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers,
+    body: hasBody && !(options.body instanceof FormData) ? JSON.stringify(options.body) : (options.body as BodyInit | undefined),
+  });
+
+  const contentType = response.headers.get('content-type') ?? '';
+  const data = contentType.includes('application/json') ? await response.json() : null;
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? data?.detail ?? `Request failed with status ${response.status}`);
+  }
+
+  return data as T;
+}
+
+export const api = {
+  login(email: string, password: string) {
+    return request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      auth: false,
+      body: { email, password },
+    });
+  },
+
+  register(full_name: string, email: string, password: string, role: Role = 'student') {
+    return request<AuthResponse>('/auth/register', {
+      method: 'POST',
+      auth: false,
+      body: { full_name, email, password, role },
+    });
+  },
+
+  me() {
+    return request<User>('/auth/me');
+  },
+
+  getCourses() {
+    return request<Course[]>('/courses', { auth: false });
+  },
+
+  createCourse(body: { title: string; description?: string; enrollment_type?: EnrollmentType }) {
+    return request<{ message: string; course: Course }>('/courses', {
+      method: 'POST',
+      body,
+    });
+  },
+
+  updateCourse(courseId: string, body: { title?: string; description?: string; thumbnail_key?: string; enrollment_type?: EnrollmentType }) {
+    return request<{ message: string; course: Course }>(`/courses/${courseId}`, {
+      method: 'PUT',
+      body,
+    });
+  },
+
+  deleteCourse(courseId: string) {
+    return request<{ message: string }>(`/courses/${courseId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  getDeletedCourses() {
+    return request<Course[]>('/courses/mine/deleted');
+  },
+
+  restoreCourse(courseId: string) {
+    return request<{ message: string; course: Course }>(`/courses/${courseId}/restore`, {
+      method: 'PATCH',
+    });
+  },
+
+  getCourseThumbnail(courseId: string) {
+    return request<PresignedDownload>(`/files/course-thumbnail/${courseId}`, { auth: false });
+  },
+
+  getCourse(courseId: string) {
+    return request<Course>(`/courses/${courseId}`, { auth: false });
+  },
+
+  enrollCourse(courseId: string) {
+    return request<{ message: string; enrollment: Enrollment }>(`/courses/${courseId}/enroll`, {
+      method: 'POST',
+    });
+  },
+
+  unenrollCourse(courseId: string) {
+    return request<{ message: string }>(`/courses/${courseId}/enroll`, {
+      method: 'DELETE',
+    });
+  },
+
+  getCourseEnrollments(courseId: string, status: 'pending' | 'active' = 'pending') {
+    return request<Enrollment[]>(`/courses/${courseId}/enrollments?status=${status}`);
+  },
+
+  approveEnrollment(courseId: string, enrollmentId: string) {
+    return request<{ message: string; enrollment: Enrollment }>(`/courses/${courseId}/enrollments/${enrollmentId}/approve`, {
+      method: 'PATCH',
+    });
+  },
+
+  rejectEnrollment(courseId: string, enrollmentId: string) {
+    return request<{ message: string }>(`/courses/${courseId}/enrollments/${enrollmentId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  getMyCourses() {
+    return request<Enrollment[]>('/users/me/courses');
+  },
+
+  getLessons(courseId: string) {
+    return request<Lesson[]>(`/courses/${courseId}/lessons`);
+  },
+
+  createLesson(courseId: string, body: { title: string; content?: string; video_key?: string; document_key?: string; order_index: number }) {
+    return request<{ message: string; lesson: Lesson }>(`/courses/${courseId}/lessons`, {
+      method: 'POST',
+      body,
+    });
+  },
+
+  getLesson(lessonId: string) {
+    return request<Lesson>(`/lessons/${lessonId}`);
+  },
+
+  updateLesson(lessonId: string, body: { title?: string; content?: string; video_key?: string; document_key?: string; order_index?: number }) {
+    return request<{ message: string; lesson: Lesson }>(`/lessons/${lessonId}`, {
+      method: 'PUT',
+      body,
+    });
+  },
+
+  deleteLesson(lessonId: string) {
+    return request<{ message: string }>(`/lessons/${lessonId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  completeLesson(lessonId: string) {
+    return request<{ message: string }>(`/lessons/${lessonId}/complete`, {
+      method: 'POST',
+    });
+  },
+
+  getCourseProgress(courseId: string) {
+    return request<CourseProgress>(`/courses/${courseId}/progress`);
+  },
+
+  getCourseQuizzes(courseId: string) {
+    return request<Quiz[]>(`/courses/${courseId}/quizzes`);
+  },
+
+  createQuiz(courseId: string, body: { title: string; description?: string; time_limit: number }) {
+    return request<{ message: string; quiz: Quiz }>(`/courses/${courseId}/quizzes`, {
+      method: 'POST',
+      body,
+    });
+  },
+
+  updateQuiz(quizId: string, body: { title?: string; description?: string; time_limit?: number }) {
+    return request<{ message: string; quiz: Quiz }>(`/quizzes/${quizId}`, {
+      method: 'PUT',
+      body,
+    });
+  },
+
+  deleteQuiz(quizId: string) {
+    return request<{ message: string }>(`/quizzes/${quizId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  getQuizQuestions(quizId: string) {
+    return request<QuizQuestion[]>(`/quizzes/${quizId}/questions`);
+  },
+
+  createQuizQuestion(quizId: string, body: QuestionInput) {
+    return request<{ message: string; question: QuizQuestion }>(`/quizzes/${quizId}/questions`, {
+      method: 'POST',
+      body,
+    });
+  },
+
+  updateQuizQuestion(quizId: string, questionId: string, body: Partial<QuestionInput>) {
+    return request<{ message: string; question: QuizQuestion }>(`/quizzes/${quizId}/questions/${questionId}`, {
+      method: 'PUT',
+      body,
+    });
+  },
+
+  deleteQuizQuestion(quizId: string, questionId: string) {
+    return request<{ message: string }>(`/quizzes/${quizId}/questions/${questionId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  startQuiz(quizId: string) {
+    return request<QuizStart>(`/quizzes/${quizId}/start`, {
+      method: 'POST',
+    });
+  },
+
+  getUsers(filters: { role?: Role; account_status?: 'pending' | 'active' | 'blocked' } = {}) {
+    const params = new URLSearchParams();
+    if (filters.role) params.set('role', filters.role);
+    if (filters.account_status) params.set('account_status', filters.account_status);
+    const query = params.toString();
+    return request<AdminUser[]>(`/users${query ? `?${query}` : ''}`);
+  },
+
+  updateAccountStatus(userId: string, account_status: 'active' | 'blocked') {
+    return request<{ message: string; user: AdminUser }>(`/users/${userId}/status`, {
+      method: 'PATCH',
+      body: { account_status },
+    });
+  },
+
+  updateTutorStatus(userId: string, account_status: 'active' | 'blocked') {
+    return this.updateAccountStatus(userId, account_status);
+  },
+};
