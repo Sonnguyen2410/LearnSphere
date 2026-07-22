@@ -26,13 +26,13 @@ export function HomePage() {
 
       <main className="relative pt-20">
         <section className="relative min-h-[calc(100vh-80px)] overflow-hidden bg-[#0d131f]">
-          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroImage})` }} />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(13,19,31,0.98)_0%,rgba(13,19,31,0.88)_38%,rgba(13,19,31,0.42)_72%,rgba(13,19,31,0.78)_100%)]" />
-          <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#0d131f] to-transparent" />
+          <div className="absolute inset-0 scale-105 bg-cover bg-[center_right] brightness-110 contrast-110 saturate-125" style={{ backgroundImage: `url(${heroImage})` }} />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,13,25,0.88)_0%,rgba(7,13,25,0.68)_38%,rgba(7,13,25,0.14)_72%,rgba(7,13,25,0.24)_100%)]" />
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#0d131f] to-transparent" />
 
           <div className="relative z-10 mx-auto flex min-h-[calc(100vh-80px)] max-w-7xl items-center px-4 py-12 md:px-8 lg:px-10">
-            <div className="relative max-w-4xl rounded-2xl border border-white/10 bg-[#0d131f]/64 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl md:p-8 lg:p-10">
-              <div className="pointer-events-none absolute -inset-px rounded-2xl bg-[linear-gradient(135deg,rgba(173,199,255,0.26),rgba(36,223,186,0.1),rgba(255,192,128,0.14))] opacity-80" />
+            <div className="relative max-w-[760px] rounded-2xl border border-white/15 bg-[#0d131f]/62 p-6 shadow-2xl shadow-black/35 backdrop-blur-md md:p-8 lg:p-10">
+              <div className="pointer-events-none absolute -inset-px rounded-2xl bg-[linear-gradient(135deg,rgba(173,199,255,0.18),rgba(36,223,186,0.08),rgba(255,192,128,0.1))] opacity-60" />
 
               <div className="relative space-y-7">
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#24dfba]/25 bg-[#24dfba]/10 px-3 py-1 text-[#24dfba]">
@@ -41,10 +41,10 @@ export function HomePage() {
                 </div>
 
                 <div>
-                  <h1 className="text-[44px] font-bold leading-[1.08] text-[#050a14] md:text-[64px]">
+                  <h1 className="text-[44px] font-bold leading-[1.08] text-white md:text-[64px]">
                     LearnSphere
                   </h1>
-                  <p className="mt-5 max-w-3xl text-[18px] font-medium leading-8 text-[#111827] md:text-[20px]">
+                  <p className="mt-5 max-w-3xl text-[18px] font-medium leading-8 text-white/86 md:text-[20px]">
                     Học viên đăng ký khóa học, theo dõi tiến độ, làm quiz và nhận hỗ trợ học tập từ AI trong một không gian học tập rõ ràng, dễ sử dụng.
                   </p>
                 </div>
@@ -54,7 +54,7 @@ export function HomePage() {
                     Khám phá khóa học
                     <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                   </a>
-                  <a className="inline-flex items-center justify-center rounded-xl border border-[#111827]/20 bg-white/80 px-8 py-4 text-[16px] font-semibold text-[#111827] shadow-sm backdrop-blur transition-all hover:border-[#00285b]/40 hover:bg-white" href="/login">
+                  <a className="inline-flex items-center justify-center rounded-xl border border-white/25 bg-white/12 px-8 py-4 text-[16px] font-semibold text-white shadow-sm backdrop-blur transition-all hover:border-white/45 hover:bg-white/18" href="/login">
                     Tiếp tục học
                   </a>
                 </div>
@@ -65,9 +65,9 @@ export function HomePage() {
                     ['Luyện tập', 'bằng quiz'],
                     ['Hỗ trợ', 'bởi AI'],
                   ].map(([title, text]) => (
-                    <div key={title} className="rounded-xl border border-[#111827]/10 bg-white/75 p-4 shadow-lg shadow-black/10 backdrop-blur">
-                      <strong className="block text-[20px] text-[#111827]">{title}</strong>
-                      <span className="mt-1 block text-[13px] leading-5 text-[#344055]">{text}</span>
+                    <div key={title} className="rounded-xl border border-white/15 bg-white/12 p-4 shadow-lg shadow-black/10 backdrop-blur">
+                      <strong className="block text-[20px] text-white">{title}</strong>
+                      <span className="mt-1 block text-[13px] leading-5 text-white/72">{text}</span>
                     </div>
                   ))}
                 </div>
