@@ -6,17 +6,14 @@ export function SphereAIButton({ className = '' }: SphereAIButtonProps) {
   return (
     <a
       href="/ai-assistant"
-      className={`group fixed bottom-8 right-8 z-[100] flex items-center gap-3 rounded-full bg-[#adc7ff] px-5 py-3 text-[#002e68] shadow-2xl shadow-black/30 transition-transform active:scale-95 hover:scale-105 ${className}`}
+      className={`ai-assistant-pulse group fixed bottom-8 right-8 z-[100] flex h-16 w-16 items-center justify-center rounded-full border-2 border-white/10 bg-[linear-gradient(135deg,#adc7ff,#24dfba)] text-[#002e68] shadow-2xl shadow-black/35 transition-transform active:scale-95 hover:scale-105 ${className}`}
       aria-label="Hỏi Sphere AI"
     >
-      <span className="flex h-10 w-10 items-center justify-center rounded-full text-[#002e68]">
-        <span className="material-symbols-outlined text-[30px]" style={{ fontVariationSettings: '"FILL" 1' }}>
-          smart_toy
-        </span>
+      <span className="material-symbols-outlined text-[32px]" style={{ fontVariationSettings: '"FILL" 1' }}>
+        psychology
       </span>
-      <span className="flex flex-col items-start leading-none">
-        <span className="text-[16px] font-bold">Hỏi Sphere AI</span>
-        <span className="mt-1 text-[11px] font-medium uppercase tracking-wider opacity-80">Trợ lý</span>
+      <span className="pointer-events-none absolute bottom-full right-0 mb-4 whitespace-nowrap rounded-xl border border-white/5 bg-[#2f3542] px-4 py-2 font-mono text-[12px] text-[#dde2f4] opacity-0 shadow-xl transition-opacity group-hover:opacity-100">
+        Hỏi Sphere AI
       </span>
     </a>
   );
