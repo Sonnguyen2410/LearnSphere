@@ -24,25 +24,6 @@ cd LearnSphere_BE
 npm install
 ```
 
-Tạo file `.env` trong thư mục `LearnSphere_BE`:
-
-```env
-PORT=5000
-MONGODB_URI=mongodb://127.0.0.1:27017/learnsphere
-JWT_SECRET=your_jwt_secret
-JWT_EXPIRES_IN=7d
-FRONTEND_URL=http://localhost:5173
-
-AWS_REGION=ap-southeast-1
-AWS_S3_BUCKET=your_bucket_name
-S3_UPLOAD_URL_EXPIRES_IN=300
-S3_DOWNLOAD_URL_EXPIRES_IN=900
-S3_STORAGE_LIMIT_BYTES=1073741824
-
-EMAIL=your_gmail_address
-EMAIL_PASSWORD=your_gmail_app_password
-```
-
 Chạy server:
 
 ```bash
