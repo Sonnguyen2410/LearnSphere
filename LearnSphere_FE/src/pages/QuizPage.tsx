@@ -634,7 +634,7 @@ export function QuizPage() {
               {selectedCourseId && (
                 <a
                   className="rounded-xl border border-[#24dfba]/40 bg-[#24dfba]/10 px-6 py-3 font-mono font-bold text-[#24dfba] transition hover:bg-[#24dfba]/20"
-                  href={`/lesson-detail?course_id=${encodeURIComponent(selectedCourseId)}`}
+                  href={`/course-detail?course_id=${encodeURIComponent(selectedCourseId)}`}
                 >
                   Thoát về bài học
                 </a>

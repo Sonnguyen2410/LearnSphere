@@ -110,13 +110,18 @@ export function LessonDetailPage() {
   }, [lesson?._id]);
 
   useEffect(() => {
+    if (courseId && !lessonId) {
+      window.location.replace(`/course-detail?course_id=${encodeURIComponent(courseId)}`);
+    }
+  }, [courseId, lessonId]);
+
+  useEffect(() => {
     if (!courseId) return;
 
     setIsLoading(true);
     api.getLessons(courseId)
       .then((items) => {
         setLessons(items);
-        if (!lessonId) setLesson(items[0] ?? null);
       })
       .catch((err) => setMessage(err instanceof Error ? err.message : 'Không thể tải danh sách bài học'))
       .finally(() => setIsLoading(false));
@@ -303,6 +308,12 @@ export function LessonDetailPage() {
           <nav className="mb-4 flex flex-wrap items-center gap-2 font-mono text-[12px] text-[#8b90a0]">
             <a className="transition hover:text-[#adc7ff]" href="/courses">Khóa học</a>
             <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+			{activeCourseId && (
+			  <>
+				<a className="transition hover:text-[#adc7ff]" href={`/course-detail?course_id=${encodeURIComponent(activeCourseId)}`}>Thông tin khóa học</a>
+				<span className="material-symbols-outlined text-[14px]">chevron_right</span>
+			  </>
+			)}
             <span className="text-[#c1c6d7]">Bài học</span>
             {lesson && (
               <>

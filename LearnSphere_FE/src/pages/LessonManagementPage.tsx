@@ -688,22 +688,38 @@ export function LessonManagementPage() {
                   ) : (
                     <div className="divide-y divide-[#253047]">
                       {lessons.map((lesson) => (
-                        <article key={lesson._id} className="flex flex-col gap-3 p-5 transition hover:bg-[#151e2d] md:flex-row md:items-center md:justify-between">
-                          <div className="min-w-0">
-                            <span className="rounded-lg bg-[#adc7ff]/15 px-2 py-1 font-mono text-[12px] font-black text-[#adc7ff]">#{lesson.order_index}</span>
-                            <h3 className="mt-3 break-words text-[18px] font-bold text-white">{lesson.title}</h3>
+                        <article key={lesson._id} className="group/lesson flex flex-col gap-3 p-3 transition hover:bg-[#151e2d] md:flex-row md:items-center md:justify-between">
+                          <a
+                            className="min-w-0 flex-1 rounded-xl p-2 outline-none transition hover:bg-[#adc7ff]/5 focus-visible:ring-2 focus-visible:ring-[#adc7ff]/60"
+                            href={`/lesson-detail?course_id=${encodeURIComponent(selectedCourseId)}&lesson_id=${encodeURIComponent(lesson._id)}`}
+                            aria-label={`Mở bài học ${lesson.title}`}
+                          >
+                            <span className="inline-flex rounded-lg bg-[#adc7ff]/15 px-2 py-1 font-mono text-[12px] font-black text-[#adc7ff]">#{lesson.order_index}</span>
+                            <h3 className="mt-3 flex items-center gap-2 break-words text-[18px] font-bold text-white transition group-hover/lesson:text-[#adc7ff]">
+                              {lesson.title}
+                              <span className="material-symbols-outlined text-[18px] text-[#8f9bb3] transition group-hover/lesson:translate-x-1 group-hover/lesson:text-[#adc7ff]">arrow_forward</span>
+                            </h3>
                             <p className="mt-1 line-clamp-2 text-[14px] leading-6 text-[#b8c1d6]">{lesson.content || 'Chưa có nội dung'}</p>
+                          </a>
+                          <div className="flex shrink-0 flex-wrap gap-2 px-2 pb-2 md:px-0 md:pb-0 md:pr-2">
+                            <a
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-[#adc7ff] px-4 py-2 font-mono text-[12px] font-black text-[#00285b] transition hover:brightness-110"
+                              href={`/lesson-detail?course_id=${encodeURIComponent(selectedCourseId)}&lesson_id=${encodeURIComponent(lesson._id)}`}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                              Mở bài
+                            </a>
+                            {canEditSelectedCourse && (
+                              <>
+								<button className="rounded-xl border border-[#adc7ff]/40 px-4 py-2 font-mono text-[12px] font-bold text-[#adc7ff] hover:bg-[#adc7ff]/10" type="button" onClick={() => { setEditingLessonId(lesson._id); setLessonForm(toLessonForm(lesson)); }}>
+								  Sửa
+								</button>
+								<button className="rounded-xl border border-[#ffb4ab]/40 px-4 py-2 font-mono text-[12px] font-bold text-[#ffb4ab] hover:bg-[#ffb4ab]/10" type="button" onClick={() => void handleDeleteLesson(lesson._id)}>
+								  Xóa
+								</button>
+                              </>
+                            )}
                           </div>
-                          {canEditSelectedCourse && (
-                            <div className="flex shrink-0 gap-2">
-                              <button className="rounded-xl border border-[#adc7ff]/40 px-4 py-2 font-mono text-[12px] font-bold text-[#adc7ff] hover:bg-[#adc7ff]/10" type="button" onClick={() => { setEditingLessonId(lesson._id); setLessonForm(toLessonForm(lesson)); }}>
-                                Sửa
-                              </button>
-                              <button className="rounded-xl border border-[#ffb4ab]/40 px-4 py-2 font-mono text-[12px] font-bold text-[#ffb4ab] hover:bg-[#ffb4ab]/10" type="button" onClick={() => void handleDeleteLesson(lesson._id)}>
-                                Xóa
-                              </button>
-                            </div>
-                          )}
                         </article>
                       ))}
                     </div>

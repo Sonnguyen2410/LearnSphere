@@ -237,7 +237,7 @@ export function DashboardPage() {
                   const progress = course.progress;
                   const progressPercent = course.status === 'active' ? progress?.progress_percent ?? 0 : 0;
                   const canOpenCourse = course.status === 'active';
-                  const href = `/lesson-detail?course_id=${encodeURIComponent(course.id)}`;
+                  const href = `/course-detail?course_id=${encodeURIComponent(course.id)}`;
 
                   return (
                     <article key={course.id} className="group overflow-hidden rounded-2xl border border-[#253047] bg-[#070d19] shadow-2xl shadow-black/20 transition hover:border-[#adc7ff]/40">

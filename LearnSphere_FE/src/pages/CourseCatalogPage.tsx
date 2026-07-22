@@ -28,7 +28,7 @@ const sortOptions: Array<{ value: SortMode; label: string; icon: string }> = [
 ];
 
 function getCourseHref(courseId: string) {
-  return `/lesson-detail?course_id=${encodeURIComponent(courseId)}`;
+  return `/course-detail?course_id=${encodeURIComponent(courseId)}`;
 }
 
 export function CourseCatalogPage() {
@@ -198,12 +198,12 @@ export function CourseCatalogPage() {
   }
 
   function handleCourseAction(course: Course) {
-    const lessonDetailUrl = getCourseHref(course._id);
+	const courseDetailUrl = getCourseHref(course._id);
     const status = enrollmentStatusByCourseId[course._id];
 
     if (canStudy(user)) {
       if (status === 'active') {
-        window.location.assign(lessonDetailUrl);
+		window.location.assign(courseDetailUrl);
       } else if (status !== 'pending') {
         void handleEnroll(course._id);
       }
@@ -215,7 +215,7 @@ export function CourseCatalogPage() {
       return;
     }
 
-    window.location.assign(lessonDetailUrl);
+	window.location.assign(courseDetailUrl);
   }
 
   const filteredCourses = useMemo(() => {
@@ -464,82 +464,89 @@ export function CourseCatalogPage() {
                   const enrollmentStatus = enrollmentStatusByCourseId[course._id];
                   const isActiveEnrollment = enrollmentStatus === 'active';
                   const isPendingEnrollment = enrollmentStatus === 'pending';
-                  const lessonDetailUrl = getCourseHref(course._id);
+				  const courseDetailUrl = getCourseHref(course._id);
                   const studentAction = getStudentAction(course);
-                  const canOpenDetail = isActiveEnrollment || !canStudy(user);
                   const badgeTone = index % 3 === 0 ? 'text-[#ffc080]' : index % 3 === 1 ? 'text-[#24dfba]' : 'text-[#adc7ff]';
                   const progress = progressByCourseId[course._id];
                   const progressPercent = progress?.progress_percent ?? 0;
                   const isCompleted = isActiveEnrollment && progressPercent >= 100;
 
                   return (
-                    <article key={course._id} className="group flex h-full flex-col rounded-xl border border-white/5 bg-[#1a202c] p-4 transition-all hover:border-[#adc7ff]/30">
-                      <div className="relative mb-4 aspect-video overflow-hidden rounded-lg bg-[#242a37]">
-                        <a className="block h-full w-full" href={canOpenDetail ? lessonDetailUrl : '#'} onClick={(event) => { if (!canOpenDetail) event.preventDefault(); }}>
-                          {thumbnailUrls[course._id] ? (
-                            <div className="h-full w-full bg-cover bg-center transition-transform duration-500 group-hover:scale-105" style={{ backgroundImage: `url(${thumbnailUrls[course._id]})` }} />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_30%_20%,rgba(173,199,255,0.24),transparent_34%),linear-gradient(135deg,#080e1a,#242a37)] text-[#8b90a0]">
-                              <span className="material-symbols-outlined text-[48px] text-[#adc7ff]/70">school</span>
-                            </div>
-                          )}
-                        </a>
-                        <span className={`absolute left-2 top-2 inline-flex items-center gap-1 rounded bg-[#0d131f]/90 px-2 py-1 font-mono text-[11px] font-bold backdrop-blur ${badgeTone}`}>
-                          <span className="material-symbols-outlined text-[14px]">{course.enrollment_type === 'approval_required' ? 'verified_user' : 'bolt'}</span>
-                          {enrollmentType}
-                        </span>
-
-                        {(canManageCourse || canModerate) && (
-                          <label className="absolute right-2 top-2 flex cursor-pointer items-center gap-1.5 rounded-md bg-[#0d131f]/80 px-2.5 py-1 font-mono text-[11px] text-[#adc7ff] opacity-0 backdrop-blur transition hover:bg-[#0d131f] group-hover:opacity-100">
-                            <span className="material-symbols-outlined text-[15px]">upload</span>
-                            Đổi ảnh
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/png,image/webp"
-                              className="hidden"
-                              onChange={async (event) => {
-                                const file = event.target.files?.[0];
-                                if (file) {
-                                  try {
-                                    setMessage('Đang upload thumbnail...');
-                                    await uploadCourseThumbnail(course._id, file);
-                                    await loadCourses();
-                                    setMessage('Cập nhật thumbnail thành công!');
-                                  } catch (err) {
-                                    setMessage(err instanceof Error ? err.message : 'Không thể cập nhật thumbnail');
-                                  }
-                                }
-                              }}
-                            />
-                          </label>
+                    <article
+                      key={course._id}
+                      className="group relative flex min-h-[430px] h-full flex-col overflow-hidden rounded-2xl border border-white/15 bg-[#101827] p-5 pt-16 shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-[#adc7ff]/45 hover:shadow-[0_20px_50px_-24px_rgba(143,183,255,0.55)]"
+                    >
+                      <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+                        {thumbnailUrls[course._id] ? (
+                          <div
+                            className="h-full w-full bg-cover bg-center opacity-75 transition duration-700 group-hover:scale-105 group-hover:opacity-85"
+                            style={{ backgroundImage: `url(${thumbnailUrls[course._id]})` }}
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_25%_15%,rgba(173,199,255,0.32),transparent_36%),linear-gradient(145deg,#101a2b,#202d43)]">
+                            <span className="material-symbols-outlined text-[72px] text-[#adc7ff]/25">school</span>
+                          </div>
                         )}
                       </div>
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#050a13]/25 via-[#07101c]/60 to-[#050911]/[0.97]" />
+                      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(4,9,17,0.62),transparent_55%)]" />
 
-                      <a className="block" href={canOpenDetail ? lessonDetailUrl : '#'} onClick={(event) => { if (!canOpenDetail) event.preventDefault(); }}>
-                        <h3 className="mb-2 text-[22px] font-semibold leading-7 text-[#dde2f4] transition-colors group-hover:text-[#adc7ff]">{course.title}</h3>
-                        <p className="mb-4 line-clamp-2 flex-grow text-[14px] leading-6 text-[#c1c6d7]">
-                          {course.description || 'Chưa có mô tả cho khóa học này.'}
-                        </p>
-                      </a>
+                      <span className={`absolute left-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#07101a]/75 px-3 py-1.5 font-mono text-[11px] font-bold shadow-lg shadow-black/20 backdrop-blur-md ${badgeTone}`}>
+                        <span className="material-symbols-outlined text-[14px]">{course.enrollment_type === 'approval_required' ? 'verified_user' : 'bolt'}</span>
+                        {enrollmentType}
+                      </span>
 
-                      <div className="mt-auto space-y-4">
+                      {(canManageCourse || canModerate) && (
+                        <label className="absolute right-4 top-4 z-20 flex cursor-pointer items-center gap-1.5 rounded-full border border-white/15 bg-[#07101a]/75 px-3 py-1.5 font-mono text-[11px] font-bold text-[#dbe7ff] opacity-0 shadow-lg shadow-black/20 backdrop-blur-md transition hover:border-[#adc7ff]/50 hover:bg-[#13223a]/90 group-hover:opacity-100 group-focus-within:opacity-100">
+                          <span className="material-symbols-outlined text-[15px]">upload</span>
+                          Đổi ảnh
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={async (event) => {
+                              const file = event.target.files?.[0];
+                              if (file) {
+                                try {
+                                  setMessage('Đang upload thumbnail...');
+                                  await uploadCourseThumbnail(course._id, file);
+                                  await loadCourses();
+                                  setMessage('Cập nhật thumbnail thành công!');
+                                } catch (err) {
+                                  setMessage(err instanceof Error ? err.message : 'Không thể cập nhật thumbnail');
+                                }
+                              }
+                            }}
+                          />
+                        </label>
+                      )}
+
+                      <div className="relative z-10 mt-auto">
+						<a className="block" href={courseDetailUrl}>
+                          <h3 className="mb-2 text-[24px] font-bold leading-8 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] transition-colors group-hover:text-[#dce8ff]">{course.title}</h3>
+                          <p className="mb-5 line-clamp-3 text-[14px] leading-6 text-white/85 drop-shadow-[0_1px_5px_rgba(0,0,0,0.95)]">
+                            {course.description || 'Chưa có mô tả cho khóa học này.'}
+                          </p>
+                        </a>
+
+                        <div className="space-y-4 border-t border-white/15 pt-4">
                         {isActiveEnrollment && canStudy(user) && (
                           <div>
-                            <div className={`mb-1.5 flex justify-between font-mono text-[11px] ${isCompleted ? 'text-[#24dfba]' : 'text-[#ffc080]'}`}>
+                            <div className={`mb-1.5 flex justify-between font-mono text-[11px] font-bold ${isCompleted ? 'text-[#54f5cf]' : 'text-[#ffd29a]'}`}>
                               <span>Trạng thái học</span>
                               <span>{isCompleted ? 'Hoàn thành' : 'Đang học'}</span>
                             </div>
-                            <div className="h-1.5 overflow-hidden rounded-full bg-[#2f3542]">
+                            <div className="h-1.5 overflow-hidden rounded-full bg-white/20 backdrop-blur">
                               <div className={`h-full rounded-full transition-all duration-500 ${isCompleted ? 'bg-[#24dfba]' : 'bg-[#ffc080]'}`} style={{ width: `${progressPercent}%` }} />
                             </div>
-                            <p className="mt-1 font-mono text-[11px] text-[#8b90a0]">
+                            <p className="mt-1 font-mono text-[11px] text-white/60">
                               {progress ? `${progress.completed_lessons}/${progress.total_lessons} bài · ${progressPercent}% hoàn thành` : 'Đang cập nhật tiến độ...'}
                             </p>
                           </div>
                         )}
 
                         <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0 space-y-1 font-mono text-[11px] text-[#8b90a0]">
+                          <div className="min-w-0 space-y-1 font-mono text-[11px] text-white/65">
                             <p className="truncate">Người tạo: {creator}</p>
                             <p className="flex items-center gap-1.5">
                               <span className="material-symbols-outlined text-[16px]">timer</span>
@@ -549,10 +556,10 @@ export function CourseCatalogPage() {
                           <button
                             className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-4 py-2.5 font-mono text-[12px] font-bold shadow-lg shadow-black/20 transition-all active:scale-95 ${
                               isPendingEnrollment
-                                ? 'cursor-not-allowed border border-[#ffc080]/40 bg-[#ffc080]/10 text-[#ffc080] opacity-85'
+                                ? 'cursor-not-allowed border border-[#ffd29a]/45 bg-[#07101a]/70 text-[#ffd29a] opacity-85 backdrop-blur-md'
                                 : studentAction.tone === 'active'
-                                  ? 'bg-[#adc7ff] text-[#002e68] hover:shadow-[0_0_22px_rgba(173,199,255,0.35)] hover:brightness-110'
-                                  : 'border border-[#adc7ff] bg-[#adc7ff]/5 text-[#adc7ff] hover:bg-[#adc7ff]/15'
+                                  ? 'bg-[#c5d9ff] text-[#002b62] hover:shadow-[0_0_24px_rgba(197,217,255,0.45)] hover:brightness-110'
+                                  : 'border border-[#c5d9ff]/70 bg-[#07101a]/60 text-[#e3ecff] backdrop-blur-md hover:bg-[#c5d9ff]/20'
                             }`}
                             type="button"
                             disabled={isPendingEnrollment}
@@ -570,6 +577,7 @@ export function CourseCatalogPage() {
                                   : 'Xem thêm'}
                           </button>
                         </div>
+                      </div>
                       </div>
                     </article>
                   );
