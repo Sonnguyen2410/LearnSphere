@@ -94,6 +94,7 @@ export function LessonManagementPage() {
   const selectedCourse = useMemo(() => courses.find((course) => course._id === selectedCourseId), [courses, selectedCourseId]);
   const canEditSelectedCourse = selectedCourse ? isCourseOwner(user, selectedCourse) : false;
   const canModerateSelectedCourse = selectedCourse ? canModerateCourse(user, selectedCourse) : false;
+  const canManageQuiz = user?.role === 'tutor' && canEditSelectedCourse;
 
   async function handleFileUpload(file: File, folder: 'thumbnails' | 'lessons/videos' | 'lessons/documents') {
     if (!selectedCourseId) {
@@ -355,18 +356,20 @@ export function LessonManagementPage() {
                 </label>
 
                 <div className="flex w-full items-stretch rounded-xl bg-[#111827] px-3 py-2">
-                  <div className="min-w-0 basis-1/3 text-center">
+                  <div className={`${user?.role === 'admin' ? 'basis-1/2' : 'basis-1/3'} min-w-0 text-center`}>
                     <span className="block font-mono text-[10px] uppercase text-[#8f9bb3]">Khóa</span>
                     <span className="text-[18px] font-black leading-6 text-[#adc7ff]">{courses.length}</span>
                   </div>
-                  <div className="min-w-0 basis-1/3 border-x border-[#354055] text-center">
+                  <div className={`${user?.role === 'admin' ? 'basis-1/2 border-l' : 'basis-1/3 border-x'} min-w-0 border-[#354055] text-center`}>
                     <span className="block font-mono text-[10px] uppercase text-[#8f9bb3]">Bài</span>
                     <span className="text-[18px] font-black leading-6 text-[#24dfba]">{lessons.length}</span>
                   </div>
-                  <div className="min-w-0 basis-1/3 text-center">
-                    <span className="block font-mono text-[10px] uppercase text-[#8f9bb3]">Quiz</span>
-                    <span className="text-[18px] font-black leading-6 text-[#ffcc7a]">{quizzes.length}</span>
-                  </div>
+                  {user?.role !== 'admin' && (
+                    <div className="min-w-0 basis-1/3 text-center">
+                      <span className="block font-mono text-[10px] uppercase text-[#8f9bb3]">Quiz</span>
+                      <span className="text-[18px] font-black leading-6 text-[#ffcc7a]">{quizzes.length}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
@@ -625,13 +628,14 @@ export function LessonManagementPage() {
                   )}
                 </section>
 
+                {user?.role !== 'admin' && (
                 <section className="overflow-hidden rounded-2xl border border-[#253047] bg-[#111827]/92 shadow-xl shadow-black/20">
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#253047] px-5 py-4">
                     <div>
                       <h2 className="text-[22px] font-extrabold">Quiz trong khóa</h2>
                       <p className="text-[13px] text-[#8f9bb3]">Tạo và quản lý câu hỏi qua trang quiz builder</p>
                     </div>
-                    {canEditSelectedCourse && (
+                    {canManageQuiz && (
                       <a className="inline-flex items-center gap-2 rounded-xl bg-[#adc7ff] px-4 py-2 font-mono text-[12px] font-black uppercase tracking-wide text-[#00285b]" href={`/question-builder?course_id=${selectedCourseId}`}>
                         <span className="material-symbols-outlined text-[18px]">quiz</span>
                         Tạo quiz
@@ -649,7 +653,7 @@ export function LessonManagementPage() {
                             <h3 className="break-words text-[18px] font-bold text-white">{quiz.title}</h3>
                             <p className="mt-1 text-[14px] leading-6 text-[#b8c1d6]">{quiz.description || 'Chưa có mô tả'} · {quiz.time_limit} phút</p>
                           </button>
-                          {canEditSelectedCourse && (
+                          {canManageQuiz && (
                             <a className="shrink-0 rounded-xl bg-[#adc7ff] px-4 py-2 font-mono text-[12px] font-black text-[#00285b]" href={`/question-builder?course_id=${selectedCourseId}&quiz_id=${quiz._id}`}>
                               Quản lý quiz
                             </a>
@@ -659,6 +663,7 @@ export function LessonManagementPage() {
                     </div>
                   )}
                 </section>
+                )}
               </>
             )}
           </section>

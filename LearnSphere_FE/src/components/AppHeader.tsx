@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BrandLogo } from './BrandLogo';
 import { NotificationBell } from './NotificationBell';
 import { UserAvatarMenu } from './UserAvatarMenu';
 import { api, type User } from '../services/api';
@@ -36,9 +37,7 @@ export function AppHeader({ avatarSrc, roleLabel, user }: AppHeaderProps) {
       <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/5 bg-[#0d131f]/92 shadow-sm backdrop-blur-xl">
         <div className="flex h-16 w-full items-center justify-between px-4 md:px-8">
           <div className="flex items-center gap-4">
-            <a className="text-[24px] font-bold text-[#adc7ff]" href="/dashboard">
-              LearnSphere
-            </a>
+            <BrandLogo href="/dashboard" iconClassName="text-[30px]" textClassName="text-[24px]" />
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <button className="icon-button" type="button" aria-label="Tìm kiếm">

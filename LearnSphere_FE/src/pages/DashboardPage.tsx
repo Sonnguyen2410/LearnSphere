@@ -15,7 +15,6 @@ function getRoleActions(role?: string): NavItem[] {
       { href: '/admin-users', icon: 'group', label: 'Duyệt tutor' },
       { href: '/courses', icon: 'school', label: 'Quản trị khóa học' },
       { href: '/lesson-management', icon: 'auto_stories', label: 'Quản lý bài học' },
-      { href: '/question-builder', icon: 'quiz', label: 'Quản lý quiz' },
       { href: '/system-monitoring', icon: 'monitoring', label: 'Giám sát hệ thống' },
     ];
   }

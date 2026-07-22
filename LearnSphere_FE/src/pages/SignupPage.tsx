@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { BrandLogo } from '../components/BrandLogo';
 import { api, clearSession, saveSession, type Role, type User } from '../services/api';
 
 export function SignupPage() {
@@ -79,7 +80,7 @@ export function SignupPage() {
       <main className="grid w-full max-w-[1200px] grid-cols-1 items-center gap-12 lg:grid-cols-2">
         <section className="hidden flex-col gap-6 text-left lg:flex">
           <header>
-            <h1 className="mb-2 text-[32px] font-bold tracking-[-0.01em] text-[#adc7ff]">LearnSphere</h1>
+            <BrandLogo className="mb-2" iconClassName="text-[34px]" textClassName="text-[32px]" />
             <p className="max-w-md text-[18px] leading-7 text-[#c1c6d7]">
               Tham gia thế hệ chuyên gia mới đang làm chủ AI qua các lộ trình học cá nhân hóa.
             </p>

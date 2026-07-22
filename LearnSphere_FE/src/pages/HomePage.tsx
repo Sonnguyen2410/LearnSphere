@@ -1,3 +1,4 @@
+import { BrandLogo } from '../components/BrandLogo';
 import { SphereAIButton } from '../components/SphereAIButton';
 
 export function HomePage() {
@@ -5,9 +6,7 @@ export function HomePage() {
     <div className="min-h-screen bg-[#0d131f] text-[#dde2f4]">
       <nav className="fixed left-0 right-0 top-0 z-50 h-20 bg-[#0d131f]/90 shadow-sm transition-all duration-300 backdrop-blur-md border-b border-white/5">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4 md:px-8">
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-bold text-[#adc7ff]">LearnSphere</span>
-          </div>
+          <BrandLogo iconClassName="text-[30px]" textClassName="text-[24px]" />
 
           <div className="flex items-center gap-3">
             <a className="text-sm font-medium text-[#c1c6d7] transition-colors hover:text-[#adc7ff]" href="/login">
@@ -169,7 +168,7 @@ export function HomePage() {
       <footer id="resources" className="border-t border-[#414754] bg-[#0d131f] px-4 py-10 md:px-8 lg:px-10">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 md:flex-row md:items-end">
           <div className="flex flex-col items-center gap-2 md:items-start">
-            <span className="text-[24px] font-bold text-[#dde2f4]">LearnSphere</span>
+            <BrandLogo iconClassName="text-[30px]" textClassName="text-[24px]" />
             <p className="max-w-xs text-center text-[12px] leading-5 text-[#c1c6d7] md:text-left">
               © 2024 Nền tảng LearnSphere. Vận hành bởi AWS Cloud.
             </p>
