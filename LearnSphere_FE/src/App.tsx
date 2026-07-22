@@ -8,6 +8,7 @@ import { LessonDetailPage } from './pages/LessonDetailPage';
 import { LessonManagementPage } from './pages/LessonManagementPage';
 import { LockedCoursesPage } from './pages/LockedCoursesPage';
 import { LoginPage } from './pages/LoginPage';
+import { MyCoursesPage } from './pages/MyCoursesPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { QuizPage } from './pages/QuizPage';
 import { QuestionBuilderPage } from './pages/QuestionBuilderPage';
@@ -68,6 +69,7 @@ function getRoute(pathname: string): RouteDefinition {
     '/login': { element: <LoginPage /> },
     '/signup': { element: <SignupPage /> },
     '/dashboard': { element: <DashboardPage />, requiresAuth: true },
+    '/my-courses': { element: <MyCoursesPage />, requiresAuth: true, roles: ['student'] },
     '/ai-assistant': { element: <AIAssistantPage />, requiresAuth: true, roles: ['student'] },
     '/courses': { element: <CourseCatalogPage /> },
     '/lesson-detail': { element: <LessonDetailPage />, requiresAuth: true },

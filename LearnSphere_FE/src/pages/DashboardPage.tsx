@@ -4,10 +4,17 @@ import { AppToast } from '../components/AppToast';
 import { SphereAIButton } from '../components/SphereAIButton';
 import { RoleSidebar } from '../components/RoleSidebar';
 import { getRoleLabel, getRoleNav, type NavItem } from '../lib/roleAccess';
-import { api, getStoredUser, type Enrollment } from '../services/api';
+import { api, getStoredUser, type CourseProgress, type Enrollment } from '../services/api';
 
 const avatarSrc =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuAK3DeXFfcU7eoLcYm0J-P0geFc_1SNB3sOpbZdSgXNGYGNkWLvpydHgoO3teNd6SCKCfYzJzNrs1AB7P8Pu74X-3istluRsHM1oPvbEs2nLPM2cHWOxHmwakxXKAZY99rZGG-p9kypULkAvH9bkTxwS1EgNluYqYhNlGpql2gZkqIWaOYk5FWOQvYjhFI2VJivahYgEOwamgFB5MZtSI9a-fovv-ztHAlZ1TjPwNnEgpB773mBUptA6A';
+const fallbackCourseImage =
+  'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=900&q=80';
+
+function formatCourseDate(value?: string | null) {
+  if (!value) return 'Chưa cập nhật';
+  return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value));
+}
 
 function getRoleActions(role?: string): NavItem[] {
   if (role === 'admin') {
@@ -24,13 +31,13 @@ function getRoleActions(role?: string): NavItem[] {
       { href: '/courses', icon: 'add_circle', label: 'Tạo khóa học' },
       { href: '/lesson-management', icon: 'auto_stories', label: 'Quản lý bài học' },
       { href: '/question-builder', icon: 'quiz', label: 'Tạo quiz' },
-      { href: '/courses', icon: 'how_to_reg', label: 'Duyệt enrollment' },
+      { href: '/courses', icon: 'how_to_reg', label: 'Duyệt đăng ký' },
     ];
   }
 
   return [
     { href: '/courses', icon: 'school', label: 'Khám phá khóa học' },
-    { href: '/dashboard', icon: 'menu_book', label: 'Theo dõi tiến độ' },
+    { href: '/my-courses', icon: 'menu_book', label: 'Theo dõi tiến độ' },
     { href: '/quiz', icon: 'quiz', label: 'Làm quiz' },
     { href: '/ai-assistant', icon: 'psychology', label: 'Hỏi trợ lý AI' },
   ];
@@ -38,6 +45,8 @@ function getRoleActions(role?: string): NavItem[] {
 
 export function DashboardPage() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [progressByCourseId, setProgressByCourseId] = useState<Record<string, CourseProgress>>({});
+  const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [message, setMessage] = useState('');
   const user = getStoredUser();
@@ -49,9 +58,45 @@ export function DashboardPage() {
 
     setIsLoadingCourses(true);
     api.getMyCourses()
-      .then(setEnrollments)
+      .then(async (items) => {
+        setEnrollments(items);
+        const courseItems = items.filter((enrollment) => typeof enrollment.course_id !== 'string');
+        const activeCourseIds = courseItems
+          .filter((enrollment) => enrollment.status === 'active')
+          .map((enrollment) => (enrollment.course_id as Exclude<Enrollment['course_id'], string>)._id);
+
+        const [progressItems, thumbnailItems] = await Promise.all([
+          Promise.all(
+            activeCourseIds.map(async (courseId) => {
+              try {
+                return [courseId, await api.getCourseProgress(courseId)] as const;
+              } catch {
+                return null;
+              }
+            }),
+          ),
+          Promise.all(
+            courseItems
+              .map((enrollment) => enrollment.course_id as Exclude<Enrollment['course_id'], string>)
+              .filter((course) => course.thumbnail_key)
+              .map(async (course) => {
+                try {
+                  const result = await api.getCourseThumbnail(course._id);
+                  return [course._id, result.download_url] as const;
+                } catch {
+                  return null;
+                }
+              }),
+          ),
+        ]);
+
+        setProgressByCourseId(Object.fromEntries(progressItems.filter(Boolean) as Array<readonly [string, CourseProgress]>));
+        setThumbnailUrls(Object.fromEntries(thumbnailItems.filter(Boolean) as Array<readonly [string, string]>));
+      })
       .catch((err) => {
         setEnrollments([]);
+        setProgressByCourseId({});
+        setThumbnailUrls({});
         setMessage(err instanceof Error ? err.message : 'Không thể tải khóa học đã đăng ký');
       })
       .finally(() => setIsLoadingCourses(false));
@@ -69,9 +114,14 @@ export function DashboardPage() {
             description: course.description || 'Chưa có mô tả.',
             author: typeof course.created_by === 'object' ? course.created_by.full_name : 'Chưa rõ',
             status: enrollment.status,
+            enrollmentCount: course.enrollment_count ?? 0,
+            requestedAt: enrollment.requested_at,
+            approvedAt: enrollment.approved_at,
+            thumbnailUrl: thumbnailUrls[course._id],
+            progress: progressByCourseId[course._id],
           };
         }),
-    [enrollments],
+    [enrollments, progressByCourseId, thumbnailUrls],
   );
 
   const activeCourses = myCourses.filter((course) => course.status === 'active').length;
@@ -166,31 +216,101 @@ export function DashboardPage() {
           {user?.role === 'student' && (
             <section className="glass-card col-span-12 rounded-xl p-6">
               <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-[24px] font-semibold">Khóa học của tôi</h2>
-                <a className="font-mono text-[13px] font-bold text-[#adc7ff] hover:underline" href="/courses">
+                <div>
+                  <h2 className="text-[28px] font-semibold">Khóa học của tôi</h2>
+                  <p className="mt-1 text-[14px] text-[#8b90a0]">Theo dõi ảnh khóa học, tiến trình và trạng thái đăng ký.</p>
+                </div>
+                <a className="font-mono text-[13px] font-bold text-[#adc7ff] hover:underline" href="/my-courses">
                   Xem tất cả
                 </a>
               </div>
+
               {isLoadingCourses && <p className="font-mono text-[12px] text-[#8b90a0]">Đang tải khóa học...</p>}
               {!isLoadingCourses && !myCourses.length && (
                 <div className="rounded-lg border border-dashed border-[#414754] bg-[#080e1a] p-8 text-center text-[#c1c6d7]">
                   Chưa có khóa học đăng ký nào.
                 </div>
               )}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {myCourses.map((course) => (
-                  <a key={course.id} className="rounded-lg border border-white/5 bg-[#080e1a] p-5 transition hover:border-[#adc7ff]/40 hover:bg-[#242a37]" href={`/lesson-detail?course_id=${encodeURIComponent(course.id)}`}>
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                      <span className="material-symbols-outlined text-[#adc7ff]">menu_book</span>
-                      <span className={course.status === 'active' ? 'font-mono text-[12px] text-[#24dfba]' : 'font-mono text-[12px] text-[#ffc080]'}>
-                        {course.status === 'active' ? 'Đang học' : 'Chờ duyệt'}
-                      </span>
-                    </div>
-                    <h3 className="text-[19px] font-semibold text-[#dde2f4]">{course.title}</h3>
-                    <p className="mt-2 line-clamp-2 text-[14px] leading-6 text-[#c1c6d7]">{course.description}</p>
-                    <p className="mt-4 font-mono text-[12px] text-[#8b90a0]">Người tạo: {course.author}</p>
-                  </a>
-                ))}
+
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                {myCourses.map((course) => {
+                  const progress = course.progress;
+                  const progressPercent = course.status === 'active' ? progress?.progress_percent ?? 0 : 0;
+                  const canOpenCourse = course.status === 'active';
+                  const href = `/lesson-detail?course_id=${encodeURIComponent(course.id)}`;
+
+                  return (
+                    <article key={course.id} className="group overflow-hidden rounded-2xl border border-[#253047] bg-[#070d19] shadow-2xl shadow-black/20 transition hover:border-[#adc7ff]/40">
+                      <a
+                        className="block"
+                        href={canOpenCourse ? href : '#'}
+                        onClick={(event) => {
+                          if (!canOpenCourse) event.preventDefault();
+                        }}
+                      >
+                        <div className="relative aspect-[16/7] overflow-hidden bg-[#101827]">
+                          <div
+                            className="h-full w-full bg-cover bg-center transition duration-500 group-hover:scale-105"
+                            style={{ backgroundImage: `url(${course.thumbnailUrl || fallbackCourseImage})` }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#070d19] via-[#070d19]/20 to-transparent" />
+                          <span className={`absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-mono text-[12px] font-bold ${course.status === 'active' ? 'bg-[#24dfba]/15 text-[#24dfba]' : 'bg-[#ffc080]/15 text-[#ffc080]'}`}>
+                            <span className="material-symbols-outlined text-[16px]">{course.status === 'active' ? 'play_circle' : 'schedule'}</span>
+                            {course.status === 'active' ? 'Đang học' : 'Chờ duyệt'}
+                          </span>
+                        </div>
+                      </a>
+
+                      <div className="p-5">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <h3 className="line-clamp-2 text-[22px] font-semibold leading-7 text-[#dde2f4]">{course.title}</h3>
+                            <p className="mt-2 line-clamp-2 text-[14px] leading-6 text-[#c1c6d7]">{course.description}</p>
+                          </div>
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#111827] px-3 py-2 font-mono text-[11px] text-[#adc7ff]">
+                            <span className="material-symbols-outlined text-[15px]">groups</span>
+                            {course.enrollmentCount} học viên
+                          </span>
+                        </div>
+
+                        <div className="mt-5 rounded-xl border border-[#253047] bg-[#111827]/80 p-4">
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <span className="font-mono text-[12px] uppercase tracking-wide text-[#8f9bb3]">Tiến trình học tập</span>
+                            <strong className="font-mono text-[13px] text-[#24dfba]">{progressPercent}%</strong>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-[#263145]">
+                            <div className="h-full rounded-full bg-gradient-to-r from-[#24dfba] to-[#adc7ff] transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+                          </div>
+                          <p className="mt-2 font-mono text-[12px] text-[#8f9bb3]">
+                            {course.status === 'active'
+                              ? progress
+                                ? `Đã hoàn thành ${progress.completed_lessons}/${progress.total_lessons} bài học`
+                                : 'Đang cập nhật tiến độ học tập...'
+                              : `Đã gửi đăng ký ngày ${formatCourseDate(course.requestedAt)}`}
+                          </p>
+                        </div>
+
+                        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0 font-mono text-[12px] text-[#8b90a0]">
+                            <p className="truncate">Người tạo: {course.author}</p>
+                            <p className="mt-1">Ngày duyệt: {formatCourseDate(course.approvedAt)}</p>
+                          </div>
+                          <a
+                            className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-3 font-mono text-[12px] font-black uppercase tracking-wide transition ${
+                              canOpenCourse
+                                ? 'bg-[#adc7ff] text-[#00285b] hover:brightness-110'
+                                : 'pointer-events-none border border-[#ffc080]/30 bg-[#ffc080]/10 text-[#ffc080]'
+                            }`}
+                            href={canOpenCourse ? href : '#'}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">{canOpenCourse ? 'play_arrow' : 'hourglass_top'}</span>
+                            {canOpenCourse ? 'Vào học' : 'Chờ duyệt'}
+                          </a>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             </section>
           )}
