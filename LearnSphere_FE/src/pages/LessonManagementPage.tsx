@@ -90,6 +90,9 @@ export function LessonManagementPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState('');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [isDeletingCourse, setIsDeletingCourse] = useState(false);
 
   const selectedCourse = useMemo(() => courses.find((course) => course._id === selectedCourseId), [courses, selectedCourseId]);
   const canEditSelectedCourse = selectedCourse ? isCourseOwner(user, selectedCourse) : false;
@@ -225,21 +228,36 @@ export function LessonManagementPage() {
     }
   }
 
-  async function handleDeleteCourse() {
+  function handleDeleteCourse() {
     if (!selectedCourseId) return;
-    const confirmed = window.confirm(
-      canModerateSelectedCourse
-        ? 'Tạm khóa khóa học này bằng cơ chế xóa mềm hiện có?'
-        : 'Xóa khóa học này? Khóa học sẽ được đưa vào thùng rác theo cơ chế xóa mềm hiện có.',
-    );
-    if (!confirmed) return;
+    setDeleteReason('');
+    setIsDeleteModalOpen(true);
+  }
 
+  async function handleConfirmDeleteCourse() {
+    if (!selectedCourseId) return;
+
+    const reason = deleteReason.trim();
+    if (!reason) {
+      setMessage('Vui lòng nhập lý do khóa khóa học.');
+      return;
+    }
+    if (reason.length > 500) {
+      setMessage('Lý do khóa không được vượt quá 500 ký tự.');
+      return;
+    }
+
+    setIsDeletingCourse(true);
     try {
-      const result = await api.deleteCourse(selectedCourseId);
+      const result = await api.deleteCourse(selectedCourseId, reason);
       setMessage(canModerateSelectedCourse ? `${result.message}. Cần thông báo cho chủ sở hữu theo quy trình quản trị.` : result.message);
+      setIsDeleteModalOpen(false);
+      setDeleteReason('');
       await loadCourses('');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Không thể xóa khóa học');
+    } finally {
+      setIsDeletingCourse(false);
     }
   }
 
@@ -327,6 +345,70 @@ export function LessonManagementPage() {
     <div className="min-h-screen bg-[#070d19] text-[#e7ecff]">
       <AppHeader user={user} roleLabel={getRoleLabel(user?.role)} avatarSrc={avatarSrc} />
       <AppToast message={message} tone={message.startsWith('Đang ') ? 'loading' : 'warning'} onClose={() => setMessage('')} />
+
+      {isDeleteModalOpen && selectedCourse && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+          <section className="w-full max-w-[520px] rounded-2xl border border-[#354055] bg-[#111827] p-5 shadow-2xl shadow-black/40">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#ffb4ab]/30 bg-[#ffb4ab]/10 px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-wider text-[#ffb4ab]">
+                  <span className="material-symbols-outlined text-[16px]">lock</span>
+                  {canModerateSelectedCourse ? 'Tạm khóa' : 'Xóa khóa học'}
+                </span>
+                <h2 className="mt-4 text-[24px] font-extrabold text-white">
+                  {canModerateSelectedCourse ? 'Bạn có chắc muốn tạm khóa khóa học này không?' : 'Bạn có chắc muốn xóa khóa học này không?'}
+                </h2>
+                <p className="mt-2 text-[14px] leading-6 text-[#b8c1d6]">{selectedCourse.title}</p>
+              </div>
+              <button
+                className="rounded-lg border border-[#354055] p-2 text-[#b8c1d6] transition hover:bg-[#1a2435]"
+                type="button"
+                onClick={() => {
+                  if (isDeletingCourse) return;
+                  setIsDeleteModalOpen(false);
+                  setDeleteReason('');
+                }}
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            <label className="mt-5 flex flex-col gap-2">
+              <span className={labelClass}>Lý do khóa</span>
+              <textarea
+                className={`${fieldClass} min-h-32 resize-y leading-6`}
+                maxLength={500}
+                placeholder="Nhập lý do để chủ sở hữu biết vì sao khóa học bị khóa..."
+                value={deleteReason}
+                onChange={(event) => setDeleteReason(event.target.value)}
+              />
+            </label>
+            <div className="mt-2 text-right font-mono text-[11px] text-[#8f9bb3]">{deleteReason.trim().length}/500</div>
+
+            <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                className="rounded-xl border border-[#354055] px-5 py-3 font-mono text-[12px] font-bold text-[#b8c1d6] transition hover:bg-[#1a2435]"
+                type="button"
+                disabled={isDeletingCourse}
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setDeleteReason('');
+                }}
+              >
+                Hủy
+              </button>
+              <button
+                className="rounded-xl bg-[#ffb4ab] px-5 py-3 font-mono text-[12px] font-black uppercase tracking-wide text-[#3d0500] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                disabled={isDeletingCourse}
+                onClick={() => void handleConfirmDeleteCourse()}
+              >
+                {isDeletingCourse ? 'Đang xử lý...' : canModerateSelectedCourse ? 'Tạm khóa' : 'Xóa khóa học'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       <RoleSidebar activePath="/lesson-management" items={navItems} user={user} />
 

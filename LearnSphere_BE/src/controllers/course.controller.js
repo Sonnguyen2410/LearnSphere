@@ -81,11 +81,13 @@ export const handleUpdateCourse = async (req, res) => {
 
 export const handleDeleteCourse = async (req, res) => {
 	const { course_id } = req.params ?? {};
+	const { deleted_reason } = req.body ?? {};
 	try {
-		const result = await deleteCourse(course_id, req.user._id, req.user.role);
+		const result = await deleteCourse(course_id, req.user._id, req.user.role, deleted_reason);
 		return res.status(200).json(result); 
 	} catch (error) {
 		if (error.message === "INVALID_COURSE_ID") return res.status(400).json({ message: "Invalid course ID format" });
+		if (error.message === "INVALID_DELETE_REASON") return res.status(400).json({ message: "Delete reason must be a string with at most 500 characters" });
 		if (error.message === "COURSE_NOT_FOUND") return res.status(404).json({ message: "Course not found" });
 		if (error.message === "FORBIDDEN_COURSE_ACTION") return res.status(403).json({ message: "Forbidden - You do not have permission to delete this course" });
 		if (error.message === "COURSE_HAS_ACTIVE_QUIZ_ATTEMPTS") return res.status(409).json({ message: "Course cannot be deleted while students are taking its quizzes" });

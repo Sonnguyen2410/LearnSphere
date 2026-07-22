@@ -23,6 +23,7 @@ export type Course = {
   is_deleted?: boolean;
   deleted_at?: string | null;
   deleted_by?: string | Pick<User, '_id' | 'full_name' | 'role'> | null;
+  deleted_reason?: string;
   enrollment_count?: number;
 };
 
@@ -316,9 +317,10 @@ export const api = {
     });
   },
 
-  deleteCourse(courseId: string) {
+  deleteCourse(courseId: string, deleted_reason?: string) {
     return request<{ message: string }>(`/courses/${courseId}`, {
       method: 'DELETE',
+      body: { deleted_reason },
     });
   },
 

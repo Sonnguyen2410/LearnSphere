@@ -98,8 +98,12 @@ export const updateCourse = async (courseId, { title, description, thumbnail_key
 };
 
 
-export const deleteCourse = async (courseId, userId, userRole) => {
+export const deleteCourse = async (courseId, userId, userRole, reason) => {
 	if (!mongoose.isValidObjectId(courseId)) throw new Error("INVALID_COURSE_ID"); 
+	if (reason !== undefined && typeof reason !== "string") throw new Error("INVALID_DELETE_REASON");
+
+	const normalizedReason = reason?.trim() ?? "";
+	if (normalizedReason.length > 500) throw new Error("INVALID_DELETE_REASON");
 
 	const course = await Course.findOne({ _id: courseId, is_deleted: false }); 
 	if (!course) throw new Error("COURSE_NOT_FOUND"); 
@@ -117,6 +121,7 @@ export const deleteCourse = async (courseId, userId, userRole) => {
 	course.is_deleted = true;
 	course.deleted_at = new Date();
 	course.deleted_by = userId;
+	course.deleted_reason = normalizedReason;
 
     await course.save();
 	return { message: "Course moved to trash successfully" };
@@ -150,6 +155,7 @@ export const restoreCourse = async (courseId, userId, userRole) => {
 	course.is_deleted = false;
 	course.deleted_at = null;
 	course.deleted_by = null;
+	course.deleted_reason = "";
 
 	const restoredCourse = await course.save();
 	return restoredCourse;

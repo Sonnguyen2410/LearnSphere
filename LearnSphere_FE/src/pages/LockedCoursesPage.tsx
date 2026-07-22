@@ -82,7 +82,7 @@ export function LockedCoursesPage() {
             <p className="mb-2 font-mono text-[12px] uppercase tracking-wider text-[#8b90a0]">{getRoleLabel(user?.role)}</p>
             <h1 className="text-[32px] font-semibold">Khóa học bị khóa</h1>
             <p className="mt-1 text-[#c1c6d7]">
-              Đây là danh sách khóa học đang ở trạng thái xóa mềm. Admin có thể mở khóa; giảng viên thấy các khóa của mình để theo dõi trạng thái.
+              Danh sách các khóa học đã bị tạm khóa. Admin có thể mở khóa, còn giảng viên có thể xem lý do và thời gian khóa.
             </p>
           </div>
           <span className="rounded-xl border border-[#354055] bg-[#070d19] px-4 py-2 font-mono text-[12px] text-[#8b90a0]">
@@ -121,6 +121,12 @@ export function LockedCoursesPage() {
                     <p>Người sở hữu: {creator}</p>
                     <p>Ngày khóa: {formatDate(course.deleted_at)}</p>
                     <p>Trạng thái API: xóa mềm</p>
+                  </div>
+                  <div className="mt-4 rounded-xl border border-[#354055] bg-[#070d19] p-3">
+                    <p className="font-mono text-[11px] uppercase tracking-wider text-[#8b90a0]">Lý do khóa</p>
+                    <p className="mt-2 whitespace-pre-wrap break-words text-[14px] leading-6 text-[#e7ecff]">
+                      {course.deleted_reason || 'Chưa có lý do khóa.'}
+                    </p>
                   </div>
                   {user?.role === 'admin' && (
                     <button className="mt-5 rounded-lg bg-[#24dfba] px-5 py-3 font-mono text-[13px] font-bold text-[#00382c]" type="button" onClick={() => void handleRestore(course._id)}>
