@@ -86,7 +86,9 @@ export function LessonManagementPage() {
   const [selectedQuizId, setSelectedQuizId] = useState('');
   const [courseForm, setCourseForm] = useState<CourseForm>(emptyCourseForm);
   const [lessonForm, setLessonForm] = useState<LessonForm>(emptyLessonForm);
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [editingLessonId, setEditingLessonId] = useState('');
+  const [isLessonEditorOpen, setIsLessonEditorOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState('');
@@ -198,6 +200,7 @@ export function LessonManagementPage() {
     setCourseForm(toCourseForm(selectedCourse));
     setLessonForm({ ...emptyLessonForm, order_index: String(lessons.length + 1 || 1) });
     setEditingLessonId('');
+    setIsLessonEditorOpen(false);
     void loadCourseParts(selectedCourseId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCourseId]);
@@ -206,6 +209,24 @@ export function LessonManagementPage() {
     void loadPendingEnrollments(selectedCourseId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCourseId, selectedCourse?.enrollment_type, canEditSelectedCourse]);
+
+  useEffect(() => {
+    let isCurrent = true;
+    if (!selectedCourseId || !selectedCourse?.thumbnail_key) {
+      setThumbnailUrl('');
+      return () => { isCurrent = false; };
+    }
+
+    api.getCourseThumbnail(selectedCourseId)
+      .then((result) => {
+        if (isCurrent) setThumbnailUrl(result.download_url);
+      })
+      .catch(() => {
+        if (isCurrent) setThumbnailUrl('');
+      });
+
+    return () => { isCurrent = false; };
+  }, [selectedCourseId, selectedCourse?.thumbnail_key]);
 
   async function handleUpdateCourse(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -277,10 +298,30 @@ export function LessonManagementPage() {
       setMessage(result.message);
       setEditingLessonId('');
       setLessonForm({ ...emptyLessonForm, order_index: String(lessons.length + 1) });
+      setIsLessonEditorOpen(false);
       await loadCourseParts(selectedCourseId);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Không thể lưu bài học');
     }
+  }
+
+  function openCreateLesson() {
+    setEditingLessonId('');
+    setLessonForm({ ...emptyLessonForm, order_index: String(lessons.length + 1) });
+    setIsLessonEditorOpen(true);
+  }
+
+  function openEditLesson(lesson: Lesson) {
+    setEditingLessonId(lesson._id);
+    setLessonForm(toLessonForm(lesson));
+    setIsLessonEditorOpen(true);
+  }
+
+  function closeLessonEditor() {
+    if (isUploading) return;
+    setIsLessonEditorOpen(false);
+    setEditingLessonId('');
+    setLessonForm({ ...emptyLessonForm, order_index: String(lessons.length + 1) });
   }
 
   async function handleDeleteLesson(lessonId: string) {
@@ -458,20 +499,11 @@ export function LessonManagementPage() {
 
             {selectedCourse && (
               <section className="rounded-2xl border border-[#253047] bg-[#111827]/92 p-5 shadow-xl shadow-black/20">
-                <div className="mb-5 flex items-center justify-between gap-3">
+                <div className="mb-5">
                   <div>
                     <h2 className="text-[21px] font-extrabold">Thông tin khóa học</h2>
                     <p className="text-[13px] text-[#8f9bb3]">Cài đặt cơ bản và thumbnail</p>
                   </div>
-                  {(canEditSelectedCourse || canModerateSelectedCourse) && (
-                    <button
-                      className="rounded-xl border border-[#ffb4ab]/40 px-3 py-2 font-mono text-[11px] font-bold text-[#ffb4ab] transition hover:bg-[#ffb4ab]/10"
-                      type="button"
-                      onClick={() => void handleDeleteCourse()}
-                    >
-                      {canModerateSelectedCourse ? 'Tạm khóa' : 'Xóa'}
-                    </button>
-                  )}
                 </div>
 
                 {canEditSelectedCourse ? (
@@ -482,7 +514,16 @@ export function LessonManagementPage() {
                     </label>
                     <label className="flex flex-col gap-2">
                       <span className={labelClass}>Mô tả</span>
-                      <textarea className={`${fieldClass} min-h-24 resize-y leading-6`} placeholder="Mô tả khóa học" value={courseForm.description} onChange={(event) => setCourseForm((current) => ({ ...current, description: event.target.value }))} />
+                      <textarea
+                        className={`${fieldClass} min-h-24 resize-none overflow-hidden leading-6 [field-sizing:content]`}
+                        placeholder="Mô tả khóa học"
+                        value={courseForm.description}
+                        onInput={(event) => {
+                          event.currentTarget.style.height = 'auto';
+                          event.currentTarget.style.height = `${event.currentTarget.scrollHeight}px`;
+                        }}
+                        onChange={(event) => setCourseForm((current) => ({ ...current, description: event.target.value }))}
+                      />
                     </label>
                     <label className="flex flex-col gap-2">
                       <span className={labelClass}>Kiểu đăng ký</span>
@@ -492,16 +533,34 @@ export function LessonManagementPage() {
                       </select>
                     </label>
 
-                    <div className="rounded-xl border border-[#354055] bg-[#070d19] p-3">
-                      <p className={labelClass}>Thumbnail S3</p>
-                      <p className="mt-2 truncate font-mono text-[12px] text-[#adc7ff]">{selectedCourse.thumbnail_key || 'Chưa có thumbnail'}</p>
-                      <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#adc7ff]/40 bg-[#adc7ff]/10 px-4 py-3 font-mono text-[12px] font-bold uppercase tracking-wide text-[#adc7ff] transition hover:bg-[#adc7ff]/20">
-                        <span className="material-symbols-outlined text-[18px]">upload</span>
-                        Đổi thumbnail
+                    <div>
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <p className={labelClass}>Ảnh đại diện khóa học</p>
+                        <span className="font-mono text-[10px] text-[#657188]">Khuyên dùng 16:9</span>
+                      </div>
+                      <div className="group relative aspect-video overflow-hidden rounded-xl border border-[#354055] bg-[#070d19]">
+                        {thumbnailUrl ? (
+                          <img
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                            src={thumbnailUrl}
+                            alt={`Thumbnail ${selectedCourse.title}`}
+                            onError={() => setThumbnailUrl('')}
+                          />
+                        ) : (
+                          <div className="flex h-full flex-col items-center justify-center gap-2 bg-[radial-gradient(circle_at_30%_20%,rgba(173,199,255,0.2),transparent_40%),linear-gradient(145deg,#0b1321,#18243a)] text-[#657188]">
+                            <span className="material-symbols-outlined text-[42px] text-[#adc7ff]/40">image</span>
+                            <span className="font-mono text-[11px] uppercase tracking-wide">Chưa có thumbnail</span>
+                          </div>
+                        )}
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#070d19]/85 via-transparent to-transparent" />
+                        <label className={`absolute bottom-3 right-3 flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-[#111827]/90 px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-wide text-white shadow-lg backdrop-blur transition hover:bg-[#adc7ff] hover:text-[#00285b] ${isUploading ? 'cursor-wait opacity-60' : 'cursor-pointer'}`}>
+                        <span className={`material-symbols-outlined text-[18px] ${isUploading ? 'animate-spin' : ''}`}>{isUploading ? 'progress_activity' : 'upload'}</span>
+                        {isUploading ? 'Đang tải...' : thumbnailUrl ? 'Đổi ảnh' : 'Tải ảnh lên'}
                         <input
                           type="file"
                           accept="image/jpeg,image/png,image/webp"
                           className="hidden"
+                          disabled={isUploading}
                           onChange={async (event) => {
                             const file = event.target.files?.[0];
                             if (file) {
@@ -515,6 +574,7 @@ export function LessonManagementPage() {
                           }}
                         />
                       </label>
+                      </div>
                     </div>
 
                     <button className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#adc7ff] px-5 py-3 font-mono text-[13px] font-black uppercase tracking-wide text-[#00285b] shadow-lg shadow-[#adc7ff]/20 transition hover:brightness-110 active:scale-[0.98]" type="submit">
@@ -531,6 +591,27 @@ export function LessonManagementPage() {
                     </p>
                   </div>
                 )}
+              </section>
+            )}
+
+            {selectedCourse && (canEditSelectedCourse || canModerateSelectedCourse) && (
+              <section className="rounded-2xl border border-[#ffb4ab]/25 bg-[#ffb4ab]/5 p-5 shadow-xl shadow-black/20">
+                <div className="flex items-start gap-3">
+                  <span className="material-symbols-outlined mt-0.5 text-[#ffb4ab]">warning</span>
+                  <div>
+                    <h2 className="text-[16px] font-extrabold text-[#ffb4ab]">Vùng nguy hiểm</h2>
+                    <p className="mt-1 text-[12px] leading-5 text-[#9da8bd]">
+                      {canModerateSelectedCourse ? 'Tạm khóa để ngừng hiển thị khóa học.' : 'Xóa khóa học và đưa dữ liệu vào trạng thái chờ khôi phục.'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  className="mt-4 w-full rounded-xl border border-[#ffb4ab]/40 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-wide text-[#ffb4ab] transition hover:bg-[#ffb4ab]/10"
+                  type="button"
+                  onClick={() => void handleDeleteCourse()}
+                >
+                  {canModerateSelectedCourse ? 'Tạm khóa khóa học' : 'Xóa khóa học'}
+                </button>
               </section>
             )}
           </aside>
@@ -552,7 +633,7 @@ export function LessonManagementPage() {
 
             {selectedCourse && (
               <>
-                {canEditSelectedCourse && selectedCourse.enrollment_type === 'approval_required' && (
+                {canEditSelectedCourse && selectedCourse.enrollment_type === 'approval_required' && pendingEnrollments.length > 0 && (
                   <section className="overflow-hidden rounded-2xl border border-[#253047] bg-[#111827]/92 shadow-xl shadow-black/20">
                     <div className="flex flex-col gap-2 border-b border-[#253047] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
@@ -590,12 +671,76 @@ export function LessonManagementPage() {
                   </section>
                 )}
 
-                {canEditSelectedCourse && (
-                  <form className="rounded-2xl border border-[#253047] bg-[#111827]/92 p-5 shadow-xl shadow-black/20" onSubmit={handleSaveLesson}>
+                <section className="overflow-hidden rounded-2xl border border-[#253047] bg-[#111827]/92 shadow-xl shadow-black/20">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#253047] px-5 py-4">
+                    <div>
+                      <h2 className="text-[22px] font-extrabold">Bài học trong khóa</h2>
+                      <p className="text-[13px] text-[#8f9bb3]">Sắp xếp theo thứ tự học</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-[#070d19] px-3 py-1 font-mono text-[12px] text-[#24dfba]">{lessons.length} bài học</span>
+                      {canEditSelectedCourse && (
+                        <button
+                          className="inline-flex items-center gap-2 rounded-xl bg-[#24dfba] px-4 py-2 font-mono text-[11px] font-black uppercase tracking-wide text-[#00382c] transition hover:brightness-110"
+                          type="button"
+                          onClick={openCreateLesson}
+                        >
+                          <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                          Thêm bài học
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {!lessons.length ? (
+                    <div className="p-8 text-center text-[#b8c1d6]">Chưa có bài học nào.</div>
+                  ) : (
+                    <div className="divide-y divide-[#253047]">
+                      {lessons.map((lesson) => (
+                        <article key={lesson._id} className="group/lesson flex flex-col gap-3 p-3 transition hover:bg-[#151e2d] md:flex-row md:items-center md:justify-between">
+                          <a
+                            className="min-w-0 flex-1 rounded-xl p-2 outline-none transition hover:bg-[#adc7ff]/5 focus-visible:ring-2 focus-visible:ring-[#adc7ff]/60"
+                            href={`/lesson-detail?course_id=${encodeURIComponent(selectedCourseId)}&lesson_id=${encodeURIComponent(lesson._id)}`}
+                            aria-label={`Mở bài học ${lesson.title}`}
+                          >
+                            <span className="inline-flex rounded-lg bg-[#adc7ff]/15 px-2 py-1 font-mono text-[12px] font-black text-[#adc7ff]">#{lesson.order_index}</span>
+                            <h3 className="mt-3 flex items-center gap-2 break-words text-[18px] font-bold text-white transition group-hover/lesson:text-[#adc7ff]">
+                              {lesson.title}
+                              <span className="material-symbols-outlined text-[18px] text-[#8f9bb3] transition group-hover/lesson:translate-x-1 group-hover/lesson:text-[#adc7ff]">arrow_forward</span>
+                            </h3>
+                            <p className="mt-1 line-clamp-2 text-[14px] leading-6 text-[#b8c1d6]">{lesson.content || 'Chưa có nội dung'}</p>
+                          </a>
+                          {canEditSelectedCourse && (
+                            <div className="flex shrink-0 flex-wrap gap-2 px-2 pb-2 md:px-0 md:pb-0 md:pr-2">
+                              <button className="rounded-xl border border-[#adc7ff]/40 px-4 py-2 font-mono text-[12px] font-bold text-[#adc7ff] hover:bg-[#adc7ff]/10" type="button" onClick={() => openEditLesson(lesson)}>
+                                Sửa
+                              </button>
+                              <button className="rounded-xl border border-[#ffb4ab]/40 px-4 py-2 font-mono text-[12px] font-bold text-[#ffb4ab] hover:bg-[#ffb4ab]/10" type="button" onClick={() => void handleDeleteLesson(lesson._id)}>
+                                Xóa
+                              </button>
+                            </div>
+                          )}
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                {canEditSelectedCourse && isLessonEditorOpen && (
+                    <div className="fixed inset-0 z-50 flex overflow-y-auto bg-black/75 p-4 backdrop-blur-sm">
+                    <form className="relative m-auto w-full max-w-[800px] rounded-2xl border border-[#24dfba]/30 bg-[#111827] p-5 shadow-2xl shadow-black/50 sm:p-6" onSubmit={handleSaveLesson}>
+                      <button
+                        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-[#354055] text-[#9da8bd] transition hover:border-[#ffb4ab]/50 hover:bg-[#ffb4ab]/10 hover:text-[#ffb4ab] disabled:cursor-not-allowed disabled:opacity-50"
+                        type="button"
+                        aria-label="Đóng form bài học"
+                        disabled={isUploading}
+                        onClick={closeLessonEditor}
+                      >
+                        <span className="material-symbols-outlined">close</span>
+                      </button>
                     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                      <div>
+                      <div className="pr-12">
                         <h2 className="text-[22px] font-extrabold text-white">{editingLessonId ? 'Sửa bài học' : 'Thêm bài học'}</h2>
-                        <p className="text-[13px] text-[#8f9bb3]">Nội dung bài học, video và tài liệu S3</p>
+                        <p className="text-[13px] text-[#8f9bb3]">{selectedCourse.title} · Nội dung, video và tài liệu S3</p>
                       </div>
                       {isUploading && <span className="rounded-full bg-[#ffc080]/10 px-3 py-1 font-mono text-[12px] text-[#ffc080]">Đang upload...</span>}
                     </div>
@@ -662,60 +807,17 @@ export function LessonManagementPage() {
                       </div>
                     </div>
 
-                    <div className="mt-5 flex flex-wrap gap-2">
-                      <button className="rounded-xl bg-[#24dfba] px-5 py-3 font-mono text-[13px] font-black uppercase tracking-wide text-[#00382c] shadow-lg shadow-[#24dfba]/15 transition hover:brightness-110" type="submit">
+                    <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                      <button className="rounded-xl border border-[#354055] px-5 py-3 font-mono text-[13px] font-bold text-[#b8c1d6] hover:bg-[#151e2d] disabled:cursor-not-allowed disabled:opacity-50" type="button" disabled={isUploading} onClick={closeLessonEditor}>
+                        Hủy
+                      </button>
+                      <button className="rounded-xl bg-[#24dfba] px-5 py-3 font-mono text-[13px] font-black uppercase tracking-wide text-[#00382c] shadow-lg shadow-[#24dfba]/15 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50" type="submit" disabled={isUploading}>
                         {editingLessonId ? 'Cập nhật' : 'Thêm bài học'}
                       </button>
-                      {editingLessonId && (
-                        <button className="rounded-xl border border-[#354055] px-5 py-3 font-mono text-[13px] font-bold text-[#b8c1d6] hover:bg-[#151e2d]" type="button" onClick={() => { setEditingLessonId(''); setLessonForm(emptyLessonForm); }}>
-                          Hủy
-                        </button>
-                      )}
                     </div>
                   </form>
-                )}
-
-                <section className="overflow-hidden rounded-2xl border border-[#253047] bg-[#111827]/92 shadow-xl shadow-black/20">
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#253047] px-5 py-4">
-                    <div>
-                      <h2 className="text-[22px] font-extrabold">Bài học trong khóa</h2>
-                      <p className="text-[13px] text-[#8f9bb3]">Sắp xếp theo thứ tự học</p>
-                    </div>
-                    <span className="rounded-full bg-[#070d19] px-3 py-1 font-mono text-[12px] text-[#24dfba]">{lessons.length} bài học</span>
                   </div>
-                  {!lessons.length ? (
-                    <div className="p-8 text-center text-[#b8c1d6]">Chưa có bài học nào.</div>
-                  ) : (
-                    <div className="divide-y divide-[#253047]">
-                      {lessons.map((lesson) => (
-                        <article key={lesson._id} className="group/lesson flex flex-col gap-3 p-3 transition hover:bg-[#151e2d] md:flex-row md:items-center md:justify-between">
-                          <a
-                            className="min-w-0 flex-1 rounded-xl p-2 outline-none transition hover:bg-[#adc7ff]/5 focus-visible:ring-2 focus-visible:ring-[#adc7ff]/60"
-                            href={`/lesson-detail?course_id=${encodeURIComponent(selectedCourseId)}&lesson_id=${encodeURIComponent(lesson._id)}`}
-                            aria-label={`Mở bài học ${lesson.title}`}
-                          >
-                            <span className="inline-flex rounded-lg bg-[#adc7ff]/15 px-2 py-1 font-mono text-[12px] font-black text-[#adc7ff]">#{lesson.order_index}</span>
-                            <h3 className="mt-3 flex items-center gap-2 break-words text-[18px] font-bold text-white transition group-hover/lesson:text-[#adc7ff]">
-                              {lesson.title}
-                              <span className="material-symbols-outlined text-[18px] text-[#8f9bb3] transition group-hover/lesson:translate-x-1 group-hover/lesson:text-[#adc7ff]">arrow_forward</span>
-                            </h3>
-                            <p className="mt-1 line-clamp-2 text-[14px] leading-6 text-[#b8c1d6]">{lesson.content || 'Chưa có nội dung'}</p>
-                          </a>
-                          {canEditSelectedCourse && (
-                            <div className="flex shrink-0 flex-wrap gap-2 px-2 pb-2 md:px-0 md:pb-0 md:pr-2">
-							  <button className="rounded-xl border border-[#adc7ff]/40 px-4 py-2 font-mono text-[12px] font-bold text-[#adc7ff] hover:bg-[#adc7ff]/10" type="button" onClick={() => { setEditingLessonId(lesson._id); setLessonForm(toLessonForm(lesson)); }}>
-								Sửa
-							  </button>
-							  <button className="rounded-xl border border-[#ffb4ab]/40 px-4 py-2 font-mono text-[12px] font-bold text-[#ffb4ab] hover:bg-[#ffb4ab]/10" type="button" onClick={() => void handleDeleteLesson(lesson._id)}>
-								Xóa
-							  </button>
-							</div>
-						  )}
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                </section>
+                )}
 
                 {user?.role !== 'admin' && (
                 <section className="overflow-hidden rounded-2xl border border-[#253047] bg-[#111827]/92 shadow-xl shadow-black/20">

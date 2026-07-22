@@ -474,54 +474,63 @@ export function CourseCatalogPage() {
                   return (
                     <article
                       key={course._id}
-                      className="group relative flex min-h-[430px] h-full flex-col overflow-hidden rounded-2xl border border-white/15 bg-[#101827] p-5 pt-16 shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-[#adc7ff]/45 hover:shadow-[0_20px_50px_-24px_rgba(143,183,255,0.55)]"
+                      className="group relative flex min-h-[430px] h-full flex-col overflow-hidden rounded-2xl border border-white/15 bg-[#101827] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-[#adc7ff]/45 hover:shadow-[0_20px_50px_-24px_rgba(143,183,255,0.55)]"
                     >
-                      <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+                      <div className="absolute inset-0 overflow-hidden bg-[#0b1321]">
                         {thumbnailUrls[course._id] ? (
-                          <div
-                            className="h-full w-full bg-cover bg-center opacity-75 transition duration-700 group-hover:scale-105 group-hover:opacity-85"
-                            style={{ backgroundImage: `url(${thumbnailUrls[course._id]})` }}
-                          />
+                          <>
+                            <img
+                              className="absolute inset-0 h-full w-full scale-110 object-cover opacity-55 blur-2xl transition duration-700 group-hover:scale-125"
+                              src={thumbnailUrls[course._id]}
+                              alt=""
+                              aria-hidden="true"
+                            />
+                            <img
+                              className="absolute inset-0 h-full w-full object-contain object-top opacity-85 transition duration-700 group-hover:scale-[1.02]"
+                              src={thumbnailUrls[course._id]}
+                              alt={`Thumbnail ${course.title}`}
+                            />
+                          </>
                         ) : (
                           <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_25%_15%,rgba(173,199,255,0.32),transparent_36%),linear-gradient(145deg,#101a2b,#202d43)]">
                             <span className="material-symbols-outlined text-[72px] text-[#adc7ff]/25">school</span>
                           </div>
                         )}
-                      </div>
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#050a13]/25 via-[#07101c]/60 to-[#050911]/[0.97]" />
-                      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(4,9,17,0.62),transparent_55%)]" />
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#050a13]/10 via-[#07101c]/55 to-[#050911]/[0.98]" />
+                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(4,9,17,0.5),transparent_55%)]" />
 
-                      <span className={`absolute left-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#07101a]/75 px-3 py-1.5 font-mono text-[11px] font-bold shadow-lg shadow-black/20 backdrop-blur-md ${badgeTone}`}>
-                        <span className="material-symbols-outlined text-[14px]">{course.enrollment_type === 'approval_required' ? 'verified_user' : 'bolt'}</span>
-                        {enrollmentType}
-                      </span>
+                        <span className={`absolute left-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#07101a]/80 px-3 py-1.5 font-mono text-[11px] font-bold shadow-lg shadow-black/20 backdrop-blur-md ${badgeTone}`}>
+                          <span className="material-symbols-outlined text-[14px]">{course.enrollment_type === 'approval_required' ? 'verified_user' : 'bolt'}</span>
+                          {enrollmentType}
+                        </span>
 
-                      {(canManageCourse || canModerate) && (
-                        <label className="absolute right-4 top-4 z-20 flex cursor-pointer items-center gap-1.5 rounded-full border border-white/15 bg-[#07101a]/75 px-3 py-1.5 font-mono text-[11px] font-bold text-[#dbe7ff] opacity-0 shadow-lg shadow-black/20 backdrop-blur-md transition hover:border-[#adc7ff]/50 hover:bg-[#13223a]/90 group-hover:opacity-100 group-focus-within:opacity-100">
-                          <span className="material-symbols-outlined text-[15px]">upload</span>
-                          Đổi ảnh
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            className="hidden"
-                            onChange={async (event) => {
-                              const file = event.target.files?.[0];
-                              if (file) {
-                                try {
-                                  setMessage('Đang upload thumbnail...');
-                                  await uploadCourseThumbnail(course._id, file);
-                                  await loadCourses();
-                                  setMessage('Cập nhật thumbnail thành công!');
-                                } catch (err) {
-                                  setMessage(err instanceof Error ? err.message : 'Không thể cập nhật thumbnail');
+                        {(canManageCourse || canModerate) && (
+                          <label className="absolute right-4 top-4 z-20 flex cursor-pointer items-center gap-1.5 rounded-full border border-white/15 bg-[#07101a]/80 px-3 py-1.5 font-mono text-[11px] font-bold text-[#dbe7ff] opacity-0 shadow-lg shadow-black/20 backdrop-blur-md transition hover:border-[#adc7ff]/50 hover:bg-[#13223a]/90 group-hover:opacity-100 group-focus-within:opacity-100">
+                            <span className="material-symbols-outlined text-[15px]">upload</span>
+                            Đổi ảnh
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              className="hidden"
+                              onChange={async (event) => {
+                                const file = event.target.files?.[0];
+                                if (file) {
+                                  try {
+                                    setMessage('Đang upload thumbnail...');
+                                    await uploadCourseThumbnail(course._id, file);
+                                    await loadCourses();
+                                    setMessage('Cập nhật thumbnail thành công!');
+                                  } catch (err) {
+                                    setMessage(err instanceof Error ? err.message : 'Không thể cập nhật thumbnail');
+                                  }
                                 }
-                              }
-                            }}
-                          />
-                        </label>
-                      )}
+                              }}
+                            />
+                          </label>
+                        )}
+                      </div>
 
-                      <div className="relative z-10 mt-auto">
+                      <div className="relative z-10 mt-auto flex flex-1 flex-col justify-end p-5 pt-16">
 						<a className="block" href={courseDetailUrl}>
                           <h3 className="mb-2 text-[24px] font-bold leading-8 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] transition-colors group-hover:text-[#dce8ff]">{course.title}</h3>
                           <p className="mb-5 line-clamp-3 text-[14px] leading-6 text-white/85 drop-shadow-[0_1px_5px_rgba(0,0,0,0.95)]">

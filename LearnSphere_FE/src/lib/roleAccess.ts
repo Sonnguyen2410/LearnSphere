@@ -62,7 +62,7 @@ export function getRoleNav(user?: User | null): NavItem[] {
     { href: '/my-courses', icon: 'menu_book', label: 'Khóa học của tôi', roles: ['student'] },
     { href: '/ai-assistant', icon: 'smart_toy', label: 'Trợ lý AI', roles: ['student'] },
     { href: '/quiz', icon: 'quiz', label: 'Quiz', roles: ['student'] },
-    { href: '/lesson-management', icon: 'auto_stories', label: 'Quản lý bài học', roles: ['tutor', 'admin'] },
+    { href: '/lesson-management', icon: 'auto_stories', label: 'Quản lý khóa học', roles: ['tutor', 'admin'] },
     { href: '/locked-courses', icon: 'lock_open', label: 'Khóa học bị khóa', roles: ['tutor', 'admin'] },
     { href: '/question-builder', icon: 'quiz', label: 'Quản lý quiz', roles: ['tutor', 'admin'] },
     { href: '/admin-users', icon: 'group', label: 'Quản lý tài khoản', roles: ['admin'] },
