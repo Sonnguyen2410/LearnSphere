@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import User from "../models/User.model.js";
 import { validateOwnProfileAvatarKey } from "./file.service.js";
+import { createNotification } from "./notification.service.js";
 
 const allowedRoles = ["student", "tutor", "admin"];
 const allowedAccountStatuses = ["pending", "active", "blocked"];
@@ -33,6 +34,18 @@ export const updateAccountStatus = async (userId, accountStatus) => {
 
 	user.account_status = accountStatus;
 	await user.save();
+
+	await createNotification({
+		recipient_id: user._id,
+		type: "account",
+		title: accountStatus === "active" ? "Tài khoản đã được kích hoạt" : "Tài khoản đã bị khóa",
+		message: accountStatus === "active"
+			? "Tài khoản LearnSphere của bạn đã được kích hoạt."
+			: "Tài khoản LearnSphere của bạn đã bị khóa bởi quản trị viên.",
+		link: "/profile",
+		metadata: { account_status: accountStatus },
+	});
+
 	return {
 		id: user._id,
 		full_name: user.full_name,

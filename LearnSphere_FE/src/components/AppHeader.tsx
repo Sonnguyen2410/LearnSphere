@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { NotificationBell } from './NotificationBell';
 import { UserAvatarMenu } from './UserAvatarMenu';
 import { api, type User } from '../services/api';
 
@@ -43,10 +44,7 @@ export function AppHeader({ avatarSrc, roleLabel, user }: AppHeaderProps) {
             <button className="icon-button" type="button" aria-label="Tìm kiếm">
               <span className="material-symbols-outlined">search</span>
             </button>
-            <button className="icon-button relative" type="button" aria-label="Thông báo">
-              <span className="material-symbols-outlined">notifications</span>
-              <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#ffc080]" />
-            </button>
+            <NotificationBell enabled={Boolean(user)} />
             <UserAvatarMenu name={user?.full_name ?? 'LearnSphere User'} role={roleLabel} avatarSrc={resolvedAvatarSrc} />
           </div>
         </div>

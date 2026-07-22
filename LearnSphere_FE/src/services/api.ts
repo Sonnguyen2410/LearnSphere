@@ -176,6 +176,23 @@ export type SystemStats = {
   };
 };
 
+export type NotificationItem = {
+  _id: string;
+  recipient_id: string;
+  type: 'enrollment' | 'account' | 'system';
+  title: string;
+  message: string;
+  link?: string;
+  read_at?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type NotificationsResponse = {
+  items: NotificationItem[];
+  unread_count: number;
+};
+
 type AuthResponse = {
   access_token: string;
   token_type: string;
@@ -549,6 +566,22 @@ export const api = {
 
   getSystemStats() {
     return request<SystemStats>('/stats');
+  },
+
+  getNotifications(limit = 20) {
+    return request<NotificationsResponse>(`/notifications?limit=${limit}`);
+  },
+
+  markNotificationAsRead(notificationId: string) {
+    return request<NotificationItem>(`/notifications/${notificationId}/read`, {
+      method: 'PATCH',
+    });
+  },
+
+  markAllNotificationsAsRead() {
+    return request<{ message: string }>('/notifications/read-all', {
+      method: 'PATCH',
+    });
   },
 
   updateAccountStatus(userId: string, account_status: 'active' | 'blocked') {
