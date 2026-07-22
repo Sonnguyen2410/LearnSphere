@@ -38,6 +38,10 @@ const emptyQuizForm: QuizForm = {
   time_limit: '15',
 };
 
+const fieldClass =
+  'w-full rounded-xl border border-[#354055] bg-[#070d19] px-4 py-3 text-[15px] text-[#e7ecff] outline-none transition placeholder:text-[#7f8aa3] focus:border-[#8fb7ff] focus:ring-2 focus:ring-[#8fb7ff]/20';
+const labelClass = 'font-mono text-[12px] uppercase tracking-wider text-[#9da8bd]';
+
 function normalizeQuestionForm(form: QuestionForm): QuestionInput {
   return {
     content: form.content.trim(),
@@ -77,6 +81,7 @@ export function QuestionBuilderPage() {
   const selectedQuiz = useMemo(() => quizzes.find((quiz) => quiz._id === selectedQuizId), [quizzes, selectedQuizId]);
   const selectedCourse = useMemo(() => courses.find((course) => course._id === selectedCourseId), [courses, selectedCourseId]);
   const canEditQuizDetail = user?.role === 'tutor';
+  const correctCount = questionForm.answers.filter((answer) => answer.is_correct && answer.content.trim()).length;
 
   useEffect(() => {
     if (!canEditQuizDetail) return;
@@ -294,11 +299,11 @@ export function QuestionBuilderPage() {
   if (!canEditQuizDetail) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0d131f] px-4 text-[#dde2f4]">
-        <section className="max-w-md rounded-xl border border-[#414754] bg-[#161c28] p-8 text-center">
+        <section className="max-w-md rounded-2xl border border-[#354055] bg-[#151c2a] p-8 text-center shadow-2xl shadow-black/30">
           <span className="material-symbols-outlined mb-4 text-[48px] text-[#ffb4ab]">lock</span>
-          <h1 className="text-[26px] font-semibold">Không có quyền truy cập</h1>
-          <p className="mt-2 text-[#c1c6d7]">Chỉ gia sư được tạo chi tiết quiz cho khóa học do mình sở hữu.</p>
-          <a className="mt-6 inline-flex rounded-lg bg-[#adc7ff] px-5 py-3 font-bold text-[#002e68]" href="/dashboard">
+          <h1 className="text-[26px] font-bold">Không có quyền truy cập</h1>
+          <p className="mt-2 text-[#b8c1d6]">Chỉ gia sư được tạo chi tiết quiz cho khóa học do mình sở hữu.</p>
+          <a className="mt-6 inline-flex rounded-xl bg-[#adc7ff] px-5 py-3 font-bold text-[#002e68]" href="/dashboard">
             Về bảng điều khiển
           </a>
         </section>
@@ -307,118 +312,150 @@ export function QuestionBuilderPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#0d131f] text-[#dde2f4]">
+    <div className="min-h-screen w-full bg-[#070d19] text-[#e7ecff]">
       <AppHeader user={user} roleLabel={getRoleLabel(user?.role)} avatarSrc={avatarSrc} />
       <AppToast message={message} tone="warning" onClose={() => setMessage('')} />
 
       <RoleSidebar activePath="/question-builder" items={navItems} user={user} />
 
       <main className="min-w-0 md:pl-64">
-        <div className="grid gap-6 p-6 lg:grid-cols-[380px_1fr]">
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#adc7ff]">settings_applications</span>
-              <h1 className="text-[24px] font-semibold text-[#dde2f4]">Cài đặt bài kiểm tra</h1>
-            </div>
-
-            <div className="flex flex-col gap-4 rounded-xl border border-white/5 bg-[#161f2e]/80 p-5">
-              <label className="flex flex-col gap-2">
-                <span className="font-mono text-[12px] uppercase tracking-wider text-[#c1c6d7]">Khóa học liên quan</span>
-                <select
-                  className="w-full rounded-lg border border-[#414754]/60 bg-[#0d131f] px-4 py-3 text-[#dde2f4]"
-                  value={selectedCourseId}
-                  onChange={(event) => {
-                    setSelectedCourseId(event.target.value);
-                    setSelectedQuizId('');
-                  }}
-                >
-                  <option value="">{isLoadingCourses ? 'Đang tải khóa học...' : 'Chọn khóa học'}</option>
-                  {courses.map((course) => (
-                    <option key={course._id} value={course._id}>{course.title}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="flex flex-col gap-2">
-                <span className="font-mono text-[12px] uppercase tracking-wider text-[#c1c6d7]">Quiz cần tạo chi tiết</span>
-                <select
-                  className="w-full rounded-lg border border-[#414754]/60 bg-[#0d131f] px-4 py-3 text-[#dde2f4]"
-                  value={selectedQuizId}
-                  onChange={(event) => setSelectedQuizId(event.target.value)}
-                  disabled={!selectedCourseId || isLoadingQuizzes}
-                >
-                  <option value="">{isLoadingQuizzes ? 'Đang tải quiz...' : 'Chọn quiz'}</option>
-                  {quizzes.map((quiz) => (
-                    <option key={quiz._id} value={quiz._id}>{quiz.title}</option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="grid grid-cols-2 gap-4">
-                <article className="rounded-lg border border-[#414754]/60 bg-[#0d131f] p-4">
-                  <p className="font-mono text-[11px] uppercase tracking-wider text-[#8b90a0]">Thời lượng</p>
-                  <p className="mt-2 text-[22px] font-semibold">{selectedQuiz ? `${selectedQuiz.time_limit} phút` : '--'}</p>
-                </article>
-                <article className="rounded-lg border border-[#414754]/60 bg-[#0d131f] p-4">
-                  <p className="font-mono text-[11px] uppercase tracking-wider text-[#8b90a0]">Số câu hỏi</p>
-                  <p className="mt-2 text-[22px] font-semibold">{questions.length}</p>
-                </article>
+        <div className="mx-auto flex max-w-[1180px] flex-col gap-5 p-4 md:flex-row md:items-start md:p-6">
+          <section className="w-full shrink-0 space-y-5 md:sticky md:top-24 md:w-[340px] xl:w-[380px]">
+            <div className="rounded-2xl border border-[#253047] bg-[#111827]/92 p-5 shadow-xl shadow-black/20">
+              <div className="mb-5 flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#adc7ff]/12 text-[#adc7ff]">
+                  <span className="material-symbols-outlined">settings_applications</span>
+                </span>
+                <div>
+                  <h2 className="text-[22px] font-extrabold">Cài đặt bài thi</h2>
+                  <p className="text-[13px] text-[#8f9bb3]">Chọn khóa học và quiz đang biên soạn</p>
+                </div>
               </div>
 
-              {!courses.length && !isLoadingCourses && (
-                <div className="rounded-lg border border-dashed border-[#414754] p-4 text-[14px] text-[#c1c6d7]">
-                  Bạn chưa có khóa học nào để tạo chi tiết quiz.
-                </div>
-              )}
+              <div className="space-y-4">
+                <label className="flex flex-col gap-2">
+                  <span className={labelClass}>Khóa học liên quan</span>
+                  <select
+                    className={fieldClass}
+                    value={selectedCourseId}
+                    onChange={(event) => {
+                      setSelectedCourseId(event.target.value);
+                      setSelectedQuizId('');
+                    }}
+                  >
+                    <option value="">{isLoadingCourses ? 'Đang tải khóa học...' : 'Chọn khóa học'}</option>
+                    {courses.map((course) => (
+                      <option key={course._id} value={course._id}>{course.title}</option>
+                    ))}
+                  </select>
+                </label>
 
-              {selectedCourse && !quizzes.length && !isLoadingQuizzes && (
-                <div className="rounded-lg border border-dashed border-[#414754] p-4 text-[14px] text-[#c1c6d7]">
-                  Khóa học này chưa có quiz. Tạo quiz bên dưới để bắt đầu thêm câu hỏi.
+                <label className="flex flex-col gap-2">
+                  <span className={labelClass}>Quiz cần tạo chi tiết</span>
+                  <select
+                    className={fieldClass}
+                    value={selectedQuizId}
+                    onChange={(event) => setSelectedQuizId(event.target.value)}
+                    disabled={!selectedCourseId || isLoadingQuizzes}
+                  >
+                    <option value="">{isLoadingQuizzes ? 'Đang tải quiz...' : 'Chọn quiz'}</option>
+                    {quizzes.map((quiz) => (
+                      <option key={quiz._id} value={quiz._id}>{quiz.title}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <article className="rounded-xl border border-[#354055] bg-[#070d19] p-4">
+                    <p className={labelClass}>Thời lượng</p>
+                    <p className="mt-2 text-[22px] font-black text-white">{selectedQuiz ? `${selectedQuiz.time_limit} phút` : '--'}</p>
+                  </article>
+                  <article className="rounded-xl border border-[#354055] bg-[#070d19] p-4">
+                    <p className={labelClass}>Số câu hỏi</p>
+                    <p className="mt-2 text-[22px] font-black text-[#24dfba]">{questions.length}</p>
+                  </article>
                 </div>
-              )}
+
+                {!courses.length && !isLoadingCourses && (
+                  <div className="rounded-xl border border-dashed border-[#46536b] bg-[#070d19] p-4 text-[14px] text-[#b8c1d6]">
+                    Bạn chưa có khóa học nào để tạo chi tiết quiz.
+                  </div>
+                )}
+
+                {selectedCourse && !quizzes.length && !isLoadingQuizzes && (
+                  <div className="rounded-xl border border-dashed border-[#46536b] bg-[#070d19] p-4 text-[14px] text-[#b8c1d6]">
+                    Khóa học này chưa có quiz. Tạo quiz bên dưới để bắt đầu thêm câu hỏi.
+                  </div>
+                )}
+              </div>
             </div>
 
-            <form className="space-y-4 rounded-xl border border-white/5 bg-[#161f2e]/80 p-5" onSubmit={handleCreateQuiz}>
-              <h2 className="text-[22px] font-semibold">Tạo quiz</h2>
-              <input
-                className="w-full rounded-lg border border-[#414754]/60 bg-[#0d131f] px-4 py-3 text-[#dde2f4] outline-none placeholder:text-[#8b90a0] focus:border-[#adc7ff]"
-                placeholder="Tên quiz"
-                value={quizForm.title}
-                onChange={(event) => setQuizForm((current) => ({ ...current, title: event.target.value }))}
-              />
-              <input
-                className="w-full rounded-lg border border-[#414754]/60 bg-[#0d131f] px-4 py-3 text-[#dde2f4] outline-none placeholder:text-[#8b90a0] focus:border-[#adc7ff]"
-                placeholder="Mô tả quiz"
-                value={quizForm.description}
-                onChange={(event) => setQuizForm((current) => ({ ...current, description: event.target.value }))}
-              />
-              <input
-                className="w-full rounded-lg border border-[#414754]/60 bg-[#0d131f] px-4 py-3 text-[#dde2f4] outline-none placeholder:text-[#8b90a0] focus:border-[#adc7ff]"
-                type="number"
-                min="1"
-                placeholder="Thời lượng phút"
-                value={quizForm.time_limit}
-                onChange={(event) => setQuizForm((current) => ({ ...current, time_limit: event.target.value }))}
-              />
-              <button
-                className="inline-flex items-center gap-2 rounded-lg bg-[#adc7ff] px-5 py-3 font-mono text-[13px] font-bold text-[#00285b] disabled:cursor-not-allowed disabled:opacity-50"
-                type="submit"
-                disabled={!selectedCourseId || isCreatingQuiz}
-              >
-                <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                {isCreatingQuiz ? 'Đang tạo...' : 'Tạo quiz'}
-              </button>
+            <form className="rounded-2xl border border-[#253047] bg-[#111827]/92 p-5 shadow-xl shadow-black/20" onSubmit={handleCreateQuiz}>
+              <div className="mb-5 flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ffcc7a]/12 text-[#ffcc7a]">
+                  <span className="material-symbols-outlined">add_notes</span>
+                </span>
+                <div>
+                  <h2 className="text-[22px] font-extrabold">Tạo quiz mới</h2>
+                  <p className="text-[13px] text-[#8f9bb3]">Tạo khung quiz rồi thêm câu hỏi ở bên phải</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <label className="flex flex-col gap-2">
+                  <span className={labelClass}>Tiêu đề quiz</span>
+                  <input
+                    className={fieldClass}
+                    placeholder="Ví dụ: Kiểm tra chương 1"
+                    value={quizForm.title}
+                    onChange={(event) => setQuizForm((current) => ({ ...current, title: event.target.value }))}
+                  />
+                </label>
+                <label className="flex flex-col gap-2">
+                  <span className={labelClass}>Mô tả</span>
+                  <input
+                    className={fieldClass}
+                    placeholder="Mô tả ngắn cho quiz"
+                    value={quizForm.description}
+                    onChange={(event) => setQuizForm((current) => ({ ...current, description: event.target.value }))}
+                  />
+                </label>
+                <label className="flex flex-col gap-2">
+                  <span className={labelClass}>Thời lượng (phút)</span>
+                  <input
+                    className={fieldClass}
+                    type="number"
+                    min="1"
+                    placeholder="15"
+                    value={quizForm.time_limit}
+                    onChange={(event) => setQuizForm((current) => ({ ...current, time_limit: event.target.value }))}
+                  />
+                </label>
+                <button
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#adc7ff] px-5 py-3 font-mono text-[13px] font-black uppercase tracking-wide text-[#00285b] shadow-lg shadow-[#adc7ff]/20 transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                  type="submit"
+                  disabled={!selectedCourseId || isCreatingQuiz}
+                >
+                  <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                  {isCreatingQuiz ? 'Đang tạo...' : 'Tạo quiz'}
+                </button>
+              </div>
             </form>
           </section>
 
-          <section className="flex min-w-0 flex-col gap-4">
-            <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#adc7ff]">format_list_bulleted</span>
-                <h2 className="text-[24px] font-semibold text-[#dde2f4]">Câu hỏi</h2>
+          <section className="flex min-w-0 flex-1 flex-col gap-5">
+            <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-[#253047] bg-[#111827]/92 p-5 shadow-xl shadow-black/20 xl:flex-row xl:items-center">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#24dfba]/12 text-[#24dfba]">
+                  <span className="material-symbols-outlined">format_list_bulleted</span>
+                </span>
+                <div>
+                  <h2 className="text-[24px] font-extrabold text-white">Trình xây dựng câu hỏi</h2>
+                  <p className="text-[13px] text-[#8f9bb3]">{selectedQuiz?.title ?? 'Chọn quiz để bắt đầu thêm câu hỏi'}</p>
+                </div>
               </div>
               <button
-                className="flex items-center gap-2 rounded-lg bg-[#fe9800] px-5 py-2.5 font-bold text-[#643900] transition-all active:scale-95 hover:brightness-110"
+                className="flex items-center gap-2 rounded-xl bg-[#fe9800] px-5 py-3 font-bold text-[#3b2300] shadow-lg shadow-[#fe9800]/20 transition hover:brightness-110 active:scale-95"
                 type="button"
                 onClick={() => setMessage(canManageSystem(user) ? 'Chức năng tạo tự động chưa sẵn sàng.' : 'Chức năng tạo câu hỏi bằng AI chưa sẵn sàng.')}
               >
@@ -427,114 +464,173 @@ export function QuestionBuilderPage() {
               </button>
             </div>
 
-            <form className="space-y-4 rounded-xl border border-white/5 bg-[#161f2e]/80 p-5" onSubmit={handleCreateQuestion}>
-              <textarea
-                className="min-h-24 w-full rounded-lg border border-[#414754]/60 bg-[#0d131f] px-4 py-3 text-[#dde2f4] outline-none placeholder:text-[#8b90a0] focus:border-[#adc7ff]"
-                placeholder="Nội dung câu hỏi"
-                value={questionForm.content}
-                onChange={(event) => setQuestionForm((current) => ({ ...current, content: event.target.value }))}
-              />
+            <form className="rounded-2xl border border-[#253047] bg-[#111827]/92 p-5 shadow-xl shadow-black/20" onSubmit={handleCreateQuestion}>
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-[20px] font-extrabold text-white">Câu hỏi mới</h3>
+                  <p className="text-[13px] text-[#8f9bb3]">Nhập nội dung, thêm đáp án và chọn đáp án đúng</p>
+                </div>
+                <div className="flex gap-2">
+                  <span className="rounded-full border border-[#354055] bg-[#070d19] px-3 py-1 font-mono text-[12px] text-[#b8c1d6]">
+                    {questionForm.answers.length} đáp án
+                  </span>
+                  <span className="rounded-full border border-[#24dfba]/30 bg-[#24dfba]/10 px-3 py-1 font-mono text-[12px] text-[#24dfba]">
+                    {correctCount} đúng
+                  </span>
+                </div>
+              </div>
 
-              <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
+              <div className="space-y-5">
                 <label className="flex flex-col gap-2">
-                  <span className="font-mono text-[12px] uppercase tracking-wider text-[#c1c6d7]">Loại câu hỏi</span>
-                  <select
-                    className="rounded-lg border border-[#414754]/60 bg-[#0d131f] px-4 py-3 text-[#dde2f4]"
-                    value={questionForm.question_type}
-                    onChange={(event) => updateQuestionType(event.target.value as QuestionForm['question_type'])}
-                  >
-                    <option value="single_choice">Một đáp án đúng</option>
-                    <option value="multiple_choice">Nhiều đáp án đúng</option>
-                  </select>
-                </label>
-                <label className="flex flex-col gap-2">
-                  <span className="font-mono text-[12px] uppercase tracking-wider text-[#c1c6d7]">Điểm</span>
-                  <input
-                    className="rounded-lg border border-[#414754]/60 bg-[#0d131f] px-4 py-3 text-[#dde2f4]"
-                    type="number"
-                    min="0.5"
-                    step="0.5"
-                    value={questionForm.point}
-                    onChange={(event) => setQuestionForm((current) => ({ ...current, point: event.target.value }))}
+                  <span className={labelClass}>Nội dung câu hỏi</span>
+                  <textarea
+                    className={`${fieldClass} min-h-28 resize-y leading-7`}
+                    placeholder="Ví dụ: Lợi ích chính của việc sử dụng AWS Lambda là gì?"
+                    value={questionForm.content}
+                    onChange={(event) => setQuestionForm((current) => ({ ...current, content: event.target.value }))}
                   />
                 </label>
-              </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="font-mono text-[12px] uppercase tracking-wider text-[#c1c6d7]">Đáp án</h3>
-                  <button className="rounded-lg border border-[#adc7ff]/40 px-3 py-2 font-mono text-[12px] text-[#adc7ff]" type="button" onClick={addAnswer}>
-                    Thêm đáp án
-                  </button>
+                <div className="grid gap-4 md:grid-cols-[1fr_140px]">
+                  <label className="flex flex-col gap-2">
+                    <span className={labelClass}>Loại câu hỏi</span>
+                    <select
+                      className={fieldClass}
+                      value={questionForm.question_type}
+                      onChange={(event) => updateQuestionType(event.target.value as QuestionForm['question_type'])}
+                    >
+                      <option value="single_choice">Một đáp án đúng</option>
+                      <option value="multiple_choice">Nhiều đáp án đúng</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-2">
+                    <span className={labelClass}>Điểm</span>
+                    <input
+                      className={fieldClass}
+                      type="number"
+                      min="0.5"
+                      step="0.5"
+                      value={questionForm.point}
+                      onChange={(event) => setQuestionForm((current) => ({ ...current, point: event.target.value }))}
+                    />
+                  </label>
                 </div>
 
-                {questionForm.answers.map((answer, index) => (
-                  <div key={index} className="grid gap-3 rounded-lg border border-[#414754]/50 bg-[#0d131f] p-3 sm:grid-cols-[1fr_auto_auto] sm:items-center">
-                    <input
-                      className="min-w-0 rounded-lg border border-[#414754]/60 bg-[#111827] px-4 py-3 text-[#dde2f4] outline-none placeholder:text-[#8b90a0] focus:border-[#adc7ff]"
-                      placeholder={`Đáp án ${index + 1}`}
-                      value={answer.content}
-                      onChange={(event) =>
-                        setQuestionForm((current) => ({
-                          ...current,
-                          answers: current.answers.map((item, itemIndex) => itemIndex === index ? { ...item, content: event.target.value } : item),
-                        }))
-                      }
-                    />
-                    <label className="flex items-center gap-2 whitespace-nowrap font-mono text-[12px] text-[#24dfba]">
-                      <input
-                        type={questionForm.question_type === 'single_choice' ? 'radio' : 'checkbox'}
-                        name="correct-answer"
-                        checked={answer.is_correct}
-                        onChange={(event) => updateCorrectAnswer(index, event.target.checked)}
-                      />
-                      Đáp án đúng
-                    </label>
-                    <button className="rounded-lg border border-[#ffb4ab]/40 px-3 py-2 font-mono text-[12px] text-[#ffb4ab]" type="button" onClick={() => removeAnswer(index)}>
-                      Xóa
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className={labelClass}>Đáp án</h3>
+                    <button
+                      className="rounded-xl border border-[#adc7ff]/50 bg-[#adc7ff]/10 px-4 py-2 font-mono text-[12px] font-bold uppercase tracking-wide text-[#adc7ff] transition hover:bg-[#adc7ff]/20"
+                      type="button"
+                      onClick={addAnswer}
+                    >
+                      Thêm đáp án
                     </button>
                   </div>
-                ))}
-              </div>
 
-              <button
-                className="inline-flex items-center gap-2 rounded-lg bg-[#adc7ff] px-5 py-3 font-mono text-[13px] font-bold text-[#00285b] disabled:cursor-not-allowed disabled:opacity-50"
-                type="submit"
-                disabled={!selectedQuizId || isSaving}
-              >
-                <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                {isSaving ? 'Đang lưu...' : 'Thêm câu hỏi vào quiz'}
-              </button>
+                  {questionForm.answers.map((answer, index) => (
+                    <div
+                      key={index}
+                      className={`grid gap-3 rounded-xl border p-3 transition xl:grid-cols-[minmax(0,1fr)_auto_auto] xl:items-center ${
+                        answer.is_correct
+                          ? 'border-[#24dfba]/45 bg-[#24dfba]/10 shadow-lg shadow-[#24dfba]/5'
+                          : 'border-[#354055] bg-[#070d19]'
+                      }`}
+                    >
+                      <input
+                        className="min-w-0 rounded-lg border border-[#354055] bg-[#0d1422] px-4 py-3 text-[#e7ecff] outline-none placeholder:text-[#7f8aa3] focus:border-[#8fb7ff]"
+                        placeholder={`Đáp án ${index + 1}`}
+                        value={answer.content}
+                        onChange={(event) =>
+                          setQuestionForm((current) => ({
+                            ...current,
+                            answers: current.answers.map((item, itemIndex) => itemIndex === index ? { ...item, content: event.target.value } : item),
+                          }))
+                        }
+                      />
+                      <label className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 font-mono text-[12px] font-bold ${answer.is_correct ? 'bg-[#24dfba]/15 text-[#24dfba]' : 'bg-[#151e2d] text-[#b8c1d6]'}`}>
+                        <input
+                          type={questionForm.question_type === 'single_choice' ? 'radio' : 'checkbox'}
+                          name="correct-answer"
+                          checked={answer.is_correct}
+                          onChange={(event) => updateCorrectAnswer(index, event.target.checked)}
+                        />
+                        Đáp án đúng
+                      </label>
+                      <button
+                        className="rounded-lg border border-[#ffb4ab]/35 px-3 py-2 font-mono text-[12px] font-bold text-[#ffb4ab] transition hover:bg-[#ffb4ab]/10"
+                        type="button"
+                        onClick={() => removeAnswer(index)}
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#adc7ff] px-5 py-3 font-mono text-[13px] font-black uppercase tracking-wide text-[#00285b] shadow-lg shadow-[#adc7ff]/20 transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                  type="submit"
+                  disabled={!selectedQuizId || isSaving}
+                >
+                  <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                  {isSaving ? 'Đang lưu...' : 'Thêm câu hỏi vào quiz'}
+                </button>
+              </div>
             </form>
 
-            <section className="overflow-hidden rounded-xl border border-white/5 bg-[#161f2e]/80">
-              <div className="flex items-center justify-between border-b border-[#414754]/50 px-5 py-4">
-                <h3 className="text-[20px] font-semibold">{selectedQuiz?.title ?? 'Câu hỏi trong quiz'}</h3>
+            <section className="overflow-hidden rounded-2xl border border-[#253047] bg-[#111827]/92 shadow-xl shadow-black/20">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#253047] px-5 py-4">
+                <div>
+                  <h3 className="text-[20px] font-extrabold">{selectedQuiz?.title ?? 'Câu hỏi trong quiz'}</h3>
+                  <p className="text-[13px] text-[#8f9bb3]">Danh sách câu hỏi đã thêm vào bài kiểm tra</p>
+                </div>
                 {isLoadingQuestions && <span className="font-mono text-[12px] text-[#8b90a0]">Đang tải...</span>}
               </div>
 
               {!questions.length && !isLoadingQuestions ? (
                 <div className="flex flex-col items-center justify-center p-10 text-center">
-                  <span className="material-symbols-outlined mb-3 text-[48px] text-[#8b90a0]">quiz</span>
-                  <h3 className="text-[24px] font-semibold text-[#dde2f4]">Chưa có câu hỏi nào</h3>
+                  <span className="material-symbols-outlined mb-3 text-[52px] text-[#657188]">quiz</span>
+                  <h3 className="text-[24px] font-bold text-white">Chưa có câu hỏi nào</h3>
+                  <p className="mt-2 max-w-md text-[14px] leading-6 text-[#8f9bb3]">Sau khi chọn quiz, hãy thêm câu hỏi đầu tiên để học viên có thể làm bài kiểm tra.</p>
                 </div>
               ) : (
-                <div className="divide-y divide-[#414754]/40">
+                <div className="divide-y divide-[#253047]">
                   {questions.map((question, index) => (
-                    <article key={question._id} className="p-5">
+                    <article key={question._id} className="p-5 transition hover:bg-[#151e2d]">
                       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                        <div>
-                          <p className="mb-2 font-mono text-[12px] text-[#8b90a0]">Câu {index + 1}</p>
-                          <h4 className="text-[18px] font-semibold">{question.content}</h4>
-                          <p className="mt-1 font-mono text-[12px] text-[#8b90a0]">{getQuestionTypeLabel(question.question_type)} · {question.point} điểm</p>
+                        <div className="min-w-0">
+                          <div className="mb-3 flex flex-wrap items-center gap-2">
+                            <span className="flex h-8 min-w-8 items-center justify-center rounded-lg bg-[#adc7ff]/15 px-2 font-mono text-[12px] font-black text-[#adc7ff]">
+                              {String(index + 1).padStart(2, '0')}
+                            </span>
+                            <span className="rounded-full bg-[#070d19] px-3 py-1 font-mono text-[12px] text-[#9da8bd]">
+                              {getQuestionTypeLabel(question.question_type)}
+                            </span>
+                            <span className="rounded-full bg-[#070d19] px-3 py-1 font-mono text-[12px] text-[#ffcc7a]">
+                              {question.point} điểm
+                            </span>
+                          </div>
+                          <h4 className="break-words text-[18px] font-bold leading-7 text-white">{question.content}</h4>
                         </div>
-                        <button className="rounded-lg border border-[#ffb4ab]/40 px-4 py-2 font-mono text-[12px] text-[#ffb4ab]" type="button" onClick={() => void handleDeleteQuestion(question._id)}>
+                        <button
+                          className="rounded-lg border border-[#ffb4ab]/40 px-4 py-2 font-mono text-[12px] font-bold text-[#ffb4ab] transition hover:bg-[#ffb4ab]/10"
+                          type="button"
+                          onClick={() => void handleDeleteQuestion(question._id)}
+                        >
                           Xóa
                         </button>
                       </div>
                       <div className="mt-4 grid gap-2 sm:grid-cols-2">
                         {question.answers.map((answer) => (
-                          <div key={answer._id} className={`rounded-lg border px-3 py-2 text-[14px] ${answer.is_correct ? 'border-[#24dfba]/40 bg-[#24dfba]/10 text-[#24dfba]' : 'border-[#414754]/50 bg-[#0d131f] text-[#c1c6d7]'}`}>
+                          <div
+                            key={answer._id}
+                            className={`rounded-xl border px-3 py-2 text-[14px] ${
+                              answer.is_correct
+                                ? 'border-[#24dfba]/45 bg-[#24dfba]/10 text-[#24dfba]'
+                                : 'border-[#354055] bg-[#070d19] text-[#b8c1d6]'
+                            }`}
+                          >
                             {answer.content}
                           </div>
                         ))}
