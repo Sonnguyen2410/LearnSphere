@@ -9,18 +9,6 @@ export function HomePage() {
             <span className="text-xl font-bold text-[#adc7ff]">LearnSphere</span>
           </div>
 
-          <div className="hidden items-center gap-6 md:flex">
-            <a className="border-b-2 border-[#adc7ff] pb-1 text-sm font-bold text-[#adc7ff]" href="#courses">
-              Khóa học
-            </a>
-            <a className="text-sm font-medium text-[#c1c6d7] transition-colors hover:text-[#adc7ff]" href="#grading">
-              Chấm điểm
-            </a>
-            <a className="text-sm font-medium text-[#c1c6d7] transition-colors hover:text-[#adc7ff]" href="#resources">
-              Tài nguyên
-            </a>
-          </div>
-
           <div className="flex items-center gap-3">
             <a className="text-sm font-medium text-[#c1c6d7] transition-colors hover:text-[#adc7ff]" href="/login">
               Đăng nhập

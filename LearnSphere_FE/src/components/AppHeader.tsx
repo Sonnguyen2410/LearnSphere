@@ -9,11 +9,11 @@ type AppHeaderProps = {
 };
 
 export function AppHeader({ avatarSrc, roleLabel, user }: AppHeaderProps) {
-  const [resolvedAvatarSrc, setResolvedAvatarSrc] = useState(avatarSrc);
+  const [resolvedAvatarSrc, setResolvedAvatarSrc] = useState(user?.avatar_key ? avatarSrc : '');
 
   useEffect(() => {
     let isActive = true;
-    setResolvedAvatarSrc(avatarSrc);
+    setResolvedAvatarSrc(user?.avatar_key ? avatarSrc : '');
 
     if (!user?.avatar_key) return () => { isActive = false; };
 
