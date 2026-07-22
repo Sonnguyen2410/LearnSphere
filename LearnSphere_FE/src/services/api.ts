@@ -190,6 +190,21 @@ export type NotificationItem = {
   updatedAt: string;
 };
 
+export type CourseDiscussion = {
+  _id: string;
+  course_id: string;
+  author_id: string | Pick<User, '_id' | 'full_name' | 'role'>;
+  content: string;
+  replies?: Array<{
+    _id: string;
+    author_id: string | Pick<User, '_id' | 'full_name' | 'role'>;
+    content: string;
+    created_at: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type NotificationsResponse = {
   items: NotificationItem[];
   unread_count: number;
@@ -414,6 +429,24 @@ export const api = {
 
   getCourseQuizzes(courseId: string) {
     return request<Quiz[]>(`/courses/${courseId}/quizzes`);
+  },
+
+  getCourseDiscussions(courseId: string) {
+    return request<CourseDiscussion[]>(`/courses/${courseId}/discussions`);
+  },
+
+  createCourseDiscussion(courseId: string, content: string) {
+    return request<{ message: string; discussion: CourseDiscussion }>(`/courses/${courseId}/discussions`, {
+      method: 'POST',
+      body: { content },
+    });
+  },
+
+  createCourseDiscussionReply(courseId: string, discussionId: string, content: string) {
+    return request<{ message: string; discussion: CourseDiscussion }>(`/courses/${courseId}/discussions/${discussionId}/replies`, {
+      method: 'POST',
+      body: { content },
+    });
   },
 
   createQuiz(courseId: string, body: { title: string; description?: string; time_limit: number }) {

@@ -41,7 +41,7 @@ export function AppHeader({ avatarSrc, roleLabel, user }: AppHeaderProps) {
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <NotificationBell enabled={Boolean(user)} />
-            <UserAvatarMenu name={user?.full_name ?? 'LearnSphere User'} role={roleLabel} avatarSrc={resolvedAvatarSrc} />
+            <UserAvatarMenu name={user?.full_name ?? 'Guest'} role={roleLabel} avatarSrc={resolvedAvatarSrc} />
           </div>
         </div>
       </header>

@@ -3,6 +3,7 @@ import { handleCreateCourse, handleGetAllCourses, handleGetCourseById, handleUpd
 import { handleEnrollCourse, handleUnenrollCourse, handleGetCourseEnrollments, handleApproveEnrollment, handleRejectEnrollment } from "../controllers/enrollment.controller.js";
 import { handleCreateLesson, handleGetCourseLessons, handleGetCourseProgress } from "../controllers/lesson.controller.js";
 import { handleCreateQuiz, handleGetCourseQuizzes } from "../controllers/quiz.controller.js";
+import { handleCreateCourseDiscussion, handleCreateCourseDiscussionReply, handleGetCourseDiscussions } from "../controllers/discussion.controller.js";
 import { protect, authorize } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -29,5 +30,9 @@ router.get("/:course_id/progress", protect, authorize("student"), handleGetCours
 
 router.get("/:course_id/quizzes", protect, handleGetCourseQuizzes);
 router.post("/:course_id/quizzes", protect, authorize("tutor", "admin"), handleCreateQuiz);
+
+router.get("/:course_id/discussions", protect, handleGetCourseDiscussions);
+router.post("/:course_id/discussions", protect, handleCreateCourseDiscussion);
+router.post("/:course_id/discussions/:discussion_id/replies", protect, handleCreateCourseDiscussionReply);
 
 export default router;

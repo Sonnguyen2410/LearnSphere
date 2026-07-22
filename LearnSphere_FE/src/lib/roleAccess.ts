@@ -51,8 +51,12 @@ export function canModerateCourse(user: User | null | undefined, course: Course)
 }
 
 export function getRoleNav(user?: User | null): NavItem[] {
-  const role = user?.role;
-  const items: NavItem[] = [
+	const role = user?.role;
+	if (!role) {
+		return [{ href: "/courses", icon: "school", label: "Khóa học" }];
+	}
+
+	const items: NavItem[] = [
     { href: '/dashboard', icon: 'dashboard', label: 'Bảng điều khiển' },
     { href: '/courses', icon: 'school', label: 'Khóa học' },
     { href: '/my-courses', icon: 'menu_book', label: 'Khóa học của tôi', roles: ['student'] },
@@ -66,5 +70,5 @@ export function getRoleNav(user?: User | null): NavItem[] {
     { href: '/profile', icon: 'person', label: 'Hồ sơ' },
   ];
 
-  return items.filter((item) => !item.roles || (role ? item.roles.includes(role) : false));
+  return items.filter((item) => !item.roles || item.roles.includes(role));
 }
