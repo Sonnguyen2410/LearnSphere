@@ -122,7 +122,7 @@ export function QuestionBuilderPage() {
           : availableCourses;
         const nextCourseId = nextVisibleCourses.some((course) => course._id === selectedCourseId)
           ? selectedCourseId
-          : nextVisibleCourses[0]?._id ?? '';
+          : '';
 
         setCourses(availableCourses);
         setTutors(tutorItems);
@@ -391,7 +391,7 @@ export function QuestionBuilderPage() {
 
   async function handleGenerateWithAI() {
 	if (!canEditQuizDetail) return;
-	if (!selectedQuizId) {
+	if (!selectedQuizId || !selectedQuiz) {
 	  setMessage('Vui lòng chọn hoặc tạo quiz trước khi sinh câu hỏi bằng AI.');
 	  return;
 	}
@@ -418,9 +418,11 @@ export function QuestionBuilderPage() {
       const result = await api.generateQuizWithAI({
         lesson_id: selectedAILessonId,
         number_of_questions: count,
+        difficulty: selectedQuiz.difficulty,
       });
       setGeneratedQuestions(result.questions);
-      setMessage(`AI đã tạo ${result.questions.length} câu hỏi nháp. Hãy kiểm tra trước khi thêm vào quiz.`);
+      const difficultyLabel = selectedQuiz.difficulty === 'advanced' ? 'nâng cao' : selectedQuiz.difficulty === 'medium' ? 'trung bình' : 'cơ bản';
+      setMessage(`AI đã tạo ${result.questions.length} câu hỏi ${difficultyLabel}. Hãy kiểm tra trước khi thêm vào quiz.`);
     } catch (error) {
       setMessage(getAIErrorMessage(error, 'Không thể tạo câu hỏi bằng AI.'));
     } finally {
@@ -653,9 +655,8 @@ export function QuestionBuilderPage() {
                       value={selectedTutorId}
                       onChange={(event) => {
                         const tutorId = event.target.value;
-                        const firstCourse = courses.find((course) => getCourseOwnerId(course) === tutorId);
                         setSelectedTutorId(tutorId);
-                        setSelectedCourseId(firstCourse?._id ?? '');
+                        setSelectedCourseId('');
                         setSelectedQuizId('');
                       }}
                     >
@@ -667,34 +668,70 @@ export function QuestionBuilderPage() {
                   </label>
                 )}
 
-                <label className="flex flex-col gap-2">
-                  <span className={labelClass}>Khóa học liên quan</span>
-                  <select
-                    className={fieldClass}
-                    value={selectedCourseId}
-                    disabled={user?.role === 'admin' && !selectedTutorId}
-                    onChange={(event) => {
-                      setSelectedCourseId(event.target.value);
-                      setSelectedQuizId('');
-                    }}
-                  >
-                    <option value="">{isLoadingCourses ? 'Đang tải khóa học...' : 'Chọn khóa học'}</option>
-                    {visibleCourses.map((course) => (
-                      <option key={course._id} value={course._id}>{course.title}</option>
-                    ))}
-                  </select>
-                </label>
+                <div className="min-w-0">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={labelClass}>Chọn khóa học</span>
+                    <span className="rounded-full bg-[#070d19] px-2.5 py-1 font-mono text-[10px] font-bold text-[#adc7ff]">{visibleCourses.length} khóa</span>
+                  </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <article className="rounded-xl border border-[#354055] bg-[#070d19] p-4">
-                    <p className={labelClass}>Quiz</p>
-                    <p className="mt-2 text-[22px] font-black text-[#ffcc7a]">{quizzes.length}</p>
-                  </article>
-                  <article className="rounded-xl border border-[#354055] bg-[#070d19] p-4">
-                    <p className={labelClass}>Bài học</p>
-                    <p className="mt-2 text-[22px] font-black text-[#24dfba]">{lessons.length}</p>
-                  </article>
+                  <div className="mt-2 space-y-2">
+                    {isLoadingCourses ? (
+                      <div className="rounded-xl border border-dashed border-[#354055] px-4 py-4 text-center text-[13px] text-[#8f9bb3]">Đang tải khóa học...</div>
+                    ) : user?.role === 'admin' && !selectedTutorId ? (
+                      <div className="rounded-xl border border-dashed border-[#354055] px-4 py-4 text-center text-[13px] text-[#8f9bb3]">Chọn giảng viên trước để xem khóa học.</div>
+                    ) : !visibleCourses.length ? (
+                      <div className="rounded-xl border border-dashed border-[#354055] px-4 py-4 text-center text-[13px] text-[#8f9bb3]">Chưa có khóa học nào để quản lý quiz.</div>
+                    ) : (
+                      visibleCourses.map((course, index) => {
+                        const isSelected = course._id === selectedCourseId;
+                        return (
+                          <button
+                            key={course._id}
+                            className={`group flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
+                              isSelected
+                                ? 'border-[#adc7ff]/55 bg-[#adc7ff]/15 text-[#adc7ff] shadow-lg shadow-[#adc7ff]/5'
+                                : 'border-[#253047] bg-[#070d19] text-[#d8e0f2] hover:border-[#46536b] hover:bg-[#182132]'
+                            }`}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCourseId(course._id);
+                              setSelectedQuizId('');
+                            }}
+                          >
+                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-mono text-[11px] font-black ${isSelected ? 'bg-[#adc7ff] text-[#00285b]' : 'bg-[#253047] text-[#9fb9ee]'}`}>
+                              {isSelected ? <span className="material-symbols-outlined text-[18px]">check</span> : String(index + 1).padStart(2, '0')}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block break-words text-[14px] font-bold leading-5">{course.title}</span>
+                              <span className={`mt-1 block font-mono text-[10px] uppercase tracking-wide ${isSelected ? 'text-[#c6d8ff]' : 'text-[#758199]'}`}>
+                                {course.enrollment_type === 'approval_required' ? 'Cần duyệt đăng ký' : 'Đăng ký mở'}
+                              </span>
+                            </span>
+                            <span className={`material-symbols-outlined shrink-0 text-[19px] transition ${isSelected ? 'text-[#adc7ff]' : 'text-[#657188] group-hover:translate-x-1 group-hover:text-[#adc7ff]'}`}>arrow_forward</span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
+
+                {selectedCourse ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <article className="rounded-xl border border-[#354055] bg-[#070d19] p-4">
+                      <p className={labelClass}>Quiz</p>
+                      <p className="mt-2 text-[22px] font-black text-[#ffcc7a]">{quizzes.length}</p>
+                    </article>
+                    <article className="rounded-xl border border-[#354055] bg-[#070d19] p-4">
+                      <p className={labelClass}>Bài học</p>
+                      <p className="mt-2 text-[22px] font-black text-[#24dfba]">{lessons.length}</p>
+                    </article>
+                  </div>
+                ) : visibleCourses.length > 0 ? (
+                  <div className="flex items-start gap-3 rounded-xl border border-dashed border-[#354055] bg-[#070d19]/70 px-4 py-3 text-[12px] leading-5 text-[#8f9bb3]">
+                    <span className="material-symbols-outlined mt-0.5 text-[18px] text-[#adc7ff]">touch_app</span>
+                    <span>Chọn một khóa học phía trên để xem bài học và danh sách quiz.</span>
+                  </div>
+                ) : null}
 
                 {selectedQuiz && (
                   <article className="rounded-xl border border-[#adc7ff]/25 bg-[#adc7ff]/5 p-4">
@@ -705,14 +742,6 @@ export function QuestionBuilderPage() {
                       <span className="rounded-full bg-[#070d19] px-2.5 py-1 text-[#24dfba]">{questions.length} câu</span>
                     </div>
                   </article>
-                )}
-
-                {!visibleCourses.length && !isLoadingCourses && (
-                  <div className="rounded-xl border border-dashed border-[#46536b] bg-[#070d19] p-4 text-[14px] text-[#b8c1d6]">
-                    {user?.role === 'admin'
-                      ? (selectedTutorId ? 'Giảng viên này chưa có khóa học để kiểm tra quiz.' : 'Chọn giảng viên để xem khóa học và quiz.')
-                      : 'Bạn chưa có khóa học nào để tạo chi tiết quiz.'}
-                  </div>
                 )}
 
                 {selectedCourse && !quizzes.length && !isLoadingQuizzes && (
@@ -899,19 +928,9 @@ export function QuestionBuilderPage() {
 
               {generatedQuestions.length > 0 && (
                 <div className="mt-5 space-y-4 border-t border-[#253047] pt-5">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-[18px] font-bold text-white">Bản nháp do AI tạo</h3>
-                      <p className="text-[12px] text-[#8f9bb3]">Kiểm tra đáp án trước khi thêm vào quiz đang chọn.</p>
-                    </div>
-                    <button
-                      className="rounded-xl bg-[#24dfba] px-5 py-3 font-mono text-[12px] font-black text-[#00382e] disabled:cursor-not-allowed disabled:opacity-50"
-                      type="button"
-                      disabled={!selectedQuizId || isSavingGenerated}
-                      onClick={() => void handleSaveGeneratedQuestions()}
-                    >
-                      {isSavingGenerated ? 'Đang thêm...' : `Thêm ${generatedQuestions.length} câu vào quiz`}
-                    </button>
+                  <div>
+                    <h3 className="text-[18px] font-bold text-white">Bản nháp do AI tạo</h3>
+                    <p className="text-[12px] text-[#8f9bb3]">Kiểm tra đáp án trước khi thêm vào quiz đang chọn.</p>
                   </div>
 
                   <div className="space-y-3">
@@ -973,6 +992,21 @@ export function QuestionBuilderPage() {
                         </div>
                       </article>
                     ))}
+                  </div>
+
+                  <div className="flex flex-col gap-3 border-t border-[#354055] pt-5 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-[13px] leading-5 text-[#9da8bd]">
+                      Đã kiểm tra xong {generatedQuestions.length} câu? Hãy thêm toàn bộ bản nháp vào quiz đang chọn.
+                    </p>
+                    <button
+                      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#24dfba] px-5 py-3 font-mono text-[12px] font-black text-[#00382e] shadow-lg shadow-[#24dfba]/15 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                      type="button"
+                      disabled={!selectedQuizId || isSavingGenerated}
+                      onClick={() => void handleSaveGeneratedQuestions()}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">playlist_add_check</span>
+                      {isSavingGenerated ? 'Đang thêm...' : `Thêm ${generatedQuestions.length} câu vào quiz`}
+                    </button>
                   </div>
                 </div>
               )}

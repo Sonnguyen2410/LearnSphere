@@ -1560,7 +1560,8 @@ Request:
 ```json
 {
 	"lesson_id": "6870f8c90db5248718eb6f41",
-	"number_of_questions": 5
+	"number_of_questions": 5,
+	"difficulty": "medium"
 }
 ```
 

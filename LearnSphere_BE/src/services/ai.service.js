@@ -373,7 +373,7 @@ export const summarizeLessonWithAI = async ({ lessonId, userId, userRole, forceR
 	};
 };
 
-export const generateQuizWithAI = async ({ lessonId, numberOfQuestions, userId, userRole }) => {
+export const generateQuizWithAI = async ({ lessonId, numberOfQuestions, difficulty, userId, userRole }) => {
 	if (userRole !== "tutor") throw new Error("FORBIDDEN_AI_ACTION");
 	if (
 		typeof numberOfQuestions !== "number" ||
@@ -383,6 +383,15 @@ export const generateQuizWithAI = async ({ lessonId, numberOfQuestions, userId, 
 	) {
 		throw new Error("INVALID_QUESTION_COUNT");
 	}
+	if (!["basic", "medium", "advanced"].includes(difficulty)) {
+		throw new Error("INVALID_QUIZ_DIFFICULTY");
+	}
+
+	const difficultyInstructions = {
+		basic: "Mức CƠ BẢN: ưu tiên câu hỏi nhận biết và thông hiểu trực tiếp; kiểm tra khái niệm, định nghĩa, công thức và dữ kiện rõ ràng trong học liệu. Phương án nhiễu phải hợp lý nhưng không đánh đố.",
+		medium: "Mức TRUNG BÌNH: ưu tiên câu hỏi thông hiểu và vận dụng một đến hai bước; yêu cầu liên hệ khái niệm, áp dụng công thức hoặc suy luận từ dữ kiện trong học liệu. Phương án nhiễu cần phản ánh các lỗi sai thường gặp.",
+		advanced: "Mức NÂNG CAO: ưu tiên câu hỏi vận dụng và phân tích nhiều bước; dùng tình huống mới nhưng chỉ dựa trên kiến thức trong học liệu, kết hợp nhiều khái niệm và tạo phương án nhiễu khó phân biệt. Không hỏi mẹo hoặc kiến thức ngoài nguồn.",
+	};
 
 	let { lesson } = await getLearningContext({ lessonId, userId, userRole });
 	const documentNeedsIndex = Boolean(lesson.document_key && !lesson.ai_document_text?.trim());
@@ -396,13 +405,14 @@ export const generateQuizWithAI = async ({ lessonId, numberOfQuestions, userId, 
 
 	const result = await invokeAI({
 		systemPrompt:
-			"Bạn tạo câu hỏi kiểm tra cho LearnSphere. Chỉ trả về một JSON array hợp lệ, không markdown, không giải thích. Mỗi phần tử phải có đúng cấu trúc: {\"content\": string, \"question_type\": \"single_choice\" hoặc \"multiple_choice\", \"answers\": [{\"content\": string, \"is_correct\": boolean}]}. Mỗi câu có 4 đáp án khác nhau; single_choice có đúng 1 đáp án đúng, multiple_choice có ít nhất 1 đáp án đúng. Chỉ dùng kiến thức trong bài học.",
+			"Bạn tạo câu hỏi kiểm tra cho LearnSphere. Chỉ trả về một JSON array hợp lệ, không markdown, không giải thích. Mỗi phần tử phải có đúng cấu trúc: {\"content\": string, \"question_type\": \"single_choice\" hoặc \"multiple_choice\", \"answers\": [{\"content\": string, \"is_correct\": boolean}]}. Mỗi câu có 4 đáp án khác nhau; single_choice có đúng 1 đáp án đúng, multiple_choice có ít nhất 1 đáp án đúng. Chỉ dùng kiến thức trong bài học. " +
+			difficultyInstructions[difficulty],
 		messages: [
 			{
 				role: "user",
 				content: [
 					{
-						text: `Tạo đúng ${numberOfQuestions} câu hỏi từ bài học sau.\n\nTiêu đề: ${lesson.title}\n\nNguồn học liệu:\n${lessonKnowledge}`,
+						text: `Tạo đúng ${numberOfQuestions} câu hỏi ở mức độ ${difficulty.toUpperCase()} từ bài học sau. Bảo đảm toàn bộ câu hỏi bám sát mức độ đã yêu cầu.\n\nTiêu đề: ${lesson.title}\n\nNguồn học liệu:\n${lessonKnowledge}`,
 					},
 				],
 			},
@@ -412,5 +422,5 @@ export const generateQuizWithAI = async ({ lessonId, numberOfQuestions, userId, 
 	});
 	const questions = parseGeneratedQuestions(result.text, numberOfQuestions);
 
-	return { lesson_id: lesson._id, questions, model_id: result.model_id, usage: result.usage };
+	return { lesson_id: lesson._id, difficulty, questions, model_id: result.model_id, usage: result.usage };
 };

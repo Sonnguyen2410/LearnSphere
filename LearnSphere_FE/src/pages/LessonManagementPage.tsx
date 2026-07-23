@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AppHeader } from '../components/AppHeader';
 import { AppToast } from '../components/AppToast';
+import { CreateCourseModal } from '../components/CreateCourseModal';
 import { RoleSidebar } from '../components/RoleSidebar';
 import { SphereAIButton } from '../components/SphereAIButton';
 import { canManageContent, canModerateCourse, getCourseOwnerId, getRoleLabel, getRoleNav, isCourseOwner } from '../lib/roleAccess';
@@ -96,6 +97,7 @@ export function LessonManagementPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState('');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isCreateCourseOpen, setIsCreateCourseOpen] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
   const [isDeletingCourse, setIsDeletingCourse] = useState(false);
 
@@ -161,7 +163,7 @@ export function LessonManagementPage() {
         : manageableCourses;
       const nextSelected = nextVisibleCourses.some((course) => course._id === preferredCourseId)
         ? preferredCourseId
-        : nextVisibleCourses[0]?._id ?? '';
+        : '';
 
       setCourses(manageableCourses);
       setTutors(tutorItems);
@@ -410,6 +412,15 @@ export function LessonManagementPage() {
       <AppHeader user={user} roleLabel={getRoleLabel(user?.role)} avatarSrc={avatarSrc} />
       <AppToast message={message} tone={message.startsWith('Đang ') ? 'loading' : 'warning'} onClose={() => setMessage('')} />
 
+      {user?.role === 'tutor' && (
+        <CreateCourseModal
+          isOpen={isCreateCourseOpen}
+          onClose={() => setIsCreateCourseOpen(false)}
+          onCreated={async (courseId) => loadCourses(courseId)}
+          onMessage={setMessage}
+        />
+      )}
+
       {isDeleteModalOpen && selectedCourse && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
           <section className="w-full max-w-[520px] rounded-2xl border border-[#354055] bg-[#111827] p-5 shadow-2xl shadow-black/40">
@@ -491,6 +502,16 @@ export function LessonManagementPage() {
                     ? 'Chọn giảng viên và khóa học để xem nội dung, bài học và thực hiện kiểm duyệt.'
                     : 'Chỉnh sửa thông tin, thêm bài học, kiểm duyệt đăng ký và điều hướng sang phần quiz.'}
                 </p>
+                {user?.role === 'tutor' && (
+                  <button
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#24dfba] px-4 py-3 font-mono text-[12px] font-black uppercase tracking-wide text-[#00382c] shadow-lg shadow-[#24dfba]/15 transition hover:brightness-110"
+                    type="button"
+                    onClick={() => setIsCreateCourseOpen(true)}
+                  >
+                    <span className="material-symbols-outlined text-[19px]">add_circle</span>
+                    Tạo thêm khóa học
+                  </button>
+                )}
               </div>
 
               <div className="flex flex-col gap-3 rounded-2xl border border-[#253047] bg-[#070d19] p-3">
@@ -502,9 +523,8 @@ export function LessonManagementPage() {
                       value={selectedTutorId}
                       onChange={(event) => {
                         const tutorId = event.target.value;
-                        const firstCourse = courses.find((course) => getCourseOwnerId(course) === tutorId);
                         setSelectedTutorId(tutorId);
-                        setSelectedCourseId(firstCourse?._id ?? '');
+                        setSelectedCourseId('');
                       }}
                     >
                       <option value="">Chọn giảng viên</option>
@@ -515,37 +535,75 @@ export function LessonManagementPage() {
                   </label>
                 )}
 
-                <label className="min-w-0 flex-1">
-                  <span className={labelClass}>Khóa học đang quản lý</span>
-                  <select
-                    className={`${fieldClass} mt-2`}
-                    value={selectedCourseId}
-                    disabled={user?.role === 'admin' && !selectedTutorId}
-                    onChange={(event) => setSelectedCourseId(event.target.value)}
-                  >
-                    <option value="">Chọn khóa học</option>
-                    {visibleCourses.map((course) => (
-                      <option key={course._id} value={course._id}>{course.title}</option>
-                    ))}
-                  </select>
-                </label>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={labelClass}>Chọn khóa học</span>
+                    <span className="rounded-full bg-[#111827] px-2.5 py-1 font-mono text-[10px] font-bold text-[#adc7ff]">{visibleCourses.length} khóa</span>
+                  </div>
 
-                <div className="flex w-full items-stretch rounded-xl bg-[#111827] px-3 py-2">
-                  <div className={`${user?.role === 'admin' ? 'basis-1/2' : 'basis-1/3'} min-w-0 text-center`}>
-                    <span className="block font-mono text-[10px] uppercase text-[#8f9bb3]">Khóa</span>
-                    <span className="text-[18px] font-black leading-6 text-[#adc7ff]">{visibleCourses.length}</span>
+                  <div className="mt-2 space-y-2">
+                    {user?.role === 'admin' && !selectedTutorId ? (
+                      <div className="rounded-xl border border-dashed border-[#354055] px-4 py-4 text-center text-[13px] text-[#8f9bb3]">
+                        Chọn giảng viên trước để xem khóa học.
+                      </div>
+                    ) : !visibleCourses.length ? (
+                      <div className="rounded-xl border border-dashed border-[#354055] px-4 py-4 text-center text-[13px] text-[#8f9bb3]">
+                        Chưa có khóa học nào.
+                      </div>
+                    ) : (
+                      visibleCourses.map((course, index) => {
+                        const isSelected = course._id === selectedCourseId;
+                        return (
+                          <button
+                            key={course._id}
+                            className={`group flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
+                              isSelected
+                                ? 'border-[#adc7ff]/55 bg-[#adc7ff]/15 text-[#adc7ff] shadow-lg shadow-[#adc7ff]/5'
+                                : 'border-[#253047] bg-[#111827] text-[#d8e0f2] hover:border-[#46536b] hover:bg-[#182132]'
+                            }`}
+                            type="button"
+                            onClick={() => setSelectedCourseId(course._id)}
+                          >
+                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-mono text-[11px] font-black ${isSelected ? 'bg-[#adc7ff] text-[#00285b]' : 'bg-[#253047] text-[#9fb9ee]'}`}>
+                              {isSelected ? <span className="material-symbols-outlined text-[18px]">check</span> : String(index + 1).padStart(2, '0')}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block break-words text-[14px] font-bold leading-5">{course.title}</span>
+                              <span className={`mt-1 block font-mono text-[10px] uppercase tracking-wide ${isSelected ? 'text-[#c6d8ff]' : 'text-[#758199]'}`}>
+                                {course.enrollment_type === 'approval_required' ? 'Cần duyệt đăng ký' : 'Đăng ký mở'}
+                              </span>
+                            </span>
+                            <span className={`material-symbols-outlined shrink-0 text-[19px] transition ${isSelected ? 'text-[#adc7ff]' : 'text-[#657188] group-hover:translate-x-1 group-hover:text-[#adc7ff]'}`}>arrow_forward</span>
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
-                  <div className={`${user?.role === 'admin' ? 'basis-1/2 border-l' : 'basis-1/3 border-x'} min-w-0 border-[#354055] text-center`}>
-                    <span className="block font-mono text-[10px] uppercase text-[#8f9bb3]">Bài</span>
-                    <span className="text-[18px] font-black leading-6 text-[#24dfba]">{lessons.length}</span>
-                  </div>
-                  {user?.role !== 'admin' && (
-                    <div className="min-w-0 basis-1/3 text-center">
-                      <span className="block font-mono text-[10px] uppercase text-[#8f9bb3]">Quiz</span>
-                      <span className="text-[18px] font-black leading-6 text-[#ffcc7a]">{quizzes.length}</span>
-                    </div>
-                  )}
                 </div>
+
+                {selectedCourse ? (
+                  <div className="flex w-full items-stretch rounded-xl border border-[#253047] bg-[#111827] px-3 py-3">
+                    <div className={`${user?.role === 'admin' ? 'basis-1/2' : 'basis-1/3'} min-w-0 text-center`}>
+                      <span className="block font-mono text-[10px] uppercase text-[#8f9bb3]">Tổng khóa</span>
+                      <span className="text-[18px] font-black leading-6 text-[#adc7ff]">{visibleCourses.length}</span>
+                    </div>
+                    <div className={`${user?.role === 'admin' ? 'basis-1/2 border-l' : 'basis-1/3 border-x'} min-w-0 border-[#354055] text-center`}>
+                      <span className="block font-mono text-[10px] uppercase text-[#8f9bb3]">Bài học</span>
+                      <span className="text-[18px] font-black leading-6 text-[#24dfba]">{lessons.length}</span>
+                    </div>
+                    {user?.role !== 'admin' && (
+                      <div className="min-w-0 basis-1/3 text-center">
+                        <span className="block font-mono text-[10px] uppercase text-[#8f9bb3]">Quiz</span>
+                        <span className="text-[18px] font-black leading-6 text-[#ffcc7a]">{quizzes.length}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : visibleCourses.length > 0 ? (
+                  <div className="flex items-start gap-3 rounded-xl border border-dashed border-[#354055] bg-[#111827]/70 px-4 py-3 text-[12px] leading-5 text-[#8f9bb3]">
+                    <span className="material-symbols-outlined mt-0.5 text-[18px] text-[#adc7ff]">touch_app</span>
+                    <span>Chọn một khóa học phía trên để xem số bài học, quiz và bắt đầu quản lý nội dung.</span>
+                  </div>
+                ) : null}
               </div>
             </section>
 
@@ -698,6 +756,18 @@ export function LessonManagementPage() {
                 <span className="material-symbols-outlined mb-3 text-[52px] text-[#657188]">menu_book</span>
                 <h2 className="text-[24px] font-bold text-white">Giảng viên này chưa có khóa học</h2>
                 <p className="mt-2 text-[#b8c1d6]">Hãy chọn giảng viên khác để xem nội dung khóa học và bài học.</p>
+              </section>
+            )}
+
+            {!isLoading && visibleCourses.length > 0 && !selectedCourseId && (
+              <section className="rounded-2xl border border-dashed border-[#354055] bg-[#111827]/70 p-10 text-center shadow-xl shadow-black/15">
+                <span className="material-symbols-outlined mb-3 text-[52px] text-[#657188]">touch_app</span>
+                <h2 className="text-[24px] font-bold text-white">Chọn khóa học để quản lý</h2>
+                <p className="mx-auto mt-2 max-w-md text-[14px] leading-6 text-[#8f9bb3]">
+                  {user?.role === 'admin'
+                    ? 'Chọn một khóa học của giảng viên ở bên trái để xem bài học và thông tin kiểm duyệt.'
+                    : 'Chọn một khóa học ở bên trái để chỉnh sửa thông tin, quản lý bài học và quiz.'}
+                </p>
               </section>
             )}
 

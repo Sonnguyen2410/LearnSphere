@@ -11,6 +11,7 @@ const clientErrors = new Map([
 	["INVALID_COURSE_ID", [400, "Invalid course ID format"]],
 	["INVALID_LESSON_ID", [400, "Invalid lesson ID format"]],
 	["INVALID_QUESTION_COUNT", [400, "number_of_questions must be an integer from 1 to 20"]],
+	["INVALID_QUIZ_DIFFICULTY", [400, "difficulty must be basic, medium, or advanced"]],
 	["INVALID_HISTORY_LIMIT", [400, "limit must be an integer from 1 to 100"]],
 	["COURSE_NOT_FOUND", [404, "Course not found"]],
 	["LESSON_NOT_FOUND", [404, "Lesson not found"]],
@@ -87,6 +88,7 @@ export const handleGenerateQuiz = async (req, res) => {
 		const result = await generateQuizWithAI({
 			lessonId: req.body?.lesson_id,
 			numberOfQuestions: req.body?.number_of_questions,
+			difficulty: req.body?.difficulty,
 			userId: req.user._id,
 			userRole: req.user.role,
 		});

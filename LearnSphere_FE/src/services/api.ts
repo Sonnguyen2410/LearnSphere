@@ -145,6 +145,7 @@ export type AISummaryResponse = {
 
 export type AIGeneratedQuizResponse = {
   lesson_id: string;
+  difficulty: QuizDifficulty;
   questions: QuestionInput[];
   model_id: string;
   usage: AIUsage | null;
@@ -561,7 +562,7 @@ export const api = {
     });
   },
 
-  generateQuizWithAI(body: { lesson_id: string; number_of_questions: number }) {
+  generateQuizWithAI(body: { lesson_id: string; number_of_questions: number; difficulty: QuizDifficulty }) {
     return request<AIGeneratedQuizResponse>('/ai/generate-quiz', {
       method: 'POST',
       body,

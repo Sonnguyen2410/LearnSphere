@@ -719,8 +719,8 @@ export function LessonDetailPage() {
           )}
             </section>
 
-            <aside className="space-y-5 lg:sticky lg:top-24 lg:col-span-4">
-              <section className="rounded-xl border border-[#414754] bg-[#161c28] p-5 shadow-xl shadow-black/20">
+            <aside className="flex flex-col gap-5 lg:sticky lg:top-24 lg:col-span-4">
+              <section className="order-1 rounded-xl border border-[#414754] bg-[#161c28] p-5 shadow-xl shadow-black/20">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="font-mono text-[12px] font-bold uppercase tracking-wider text-[#8b90a0]">Course Modules</h2>
                   <span className="font-mono text-[12px] text-[#adc7ff]">{lessons.length}</span>
@@ -747,7 +747,7 @@ export function LessonDetailPage() {
                 </div>
               </section>
 
-              <section className="rounded-xl border border-[#414754] bg-[#161f2e] p-5 shadow-xl shadow-black/20">
+              <section className="order-2 rounded-xl border border-[#414754] bg-[#161f2e] p-5 shadow-xl shadow-black/20">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="font-mono text-[12px] font-bold uppercase tracking-wider text-[#adc7ff]">Lesson Progress</h2>
                   <span className="text-[26px] font-bold text-[#24dfba]">{progressPercent}%</span>
@@ -770,7 +770,7 @@ export function LessonDetailPage() {
               </section>
 
               {courseId && (
-                <section className="rounded-xl border border-[#414754] bg-[#242a37] p-5 text-center shadow-xl shadow-black/20">
+                <section className="order-4 rounded-xl border border-[#414754] bg-[#242a37] p-5 text-center shadow-xl shadow-black/20">
                   <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#ffc080]/25 bg-[#ffc080]/10 text-[#ffc080]">
                     <span className="material-symbols-outlined text-[34px]" style={{ fontVariationSettings: '"FILL" 1' }}>quiz</span>
                   </div>
@@ -785,13 +785,18 @@ export function LessonDetailPage() {
                 </section>
               )}
 
-              <section className="rounded-xl border border-[#414754] bg-[#1a202c] p-5 shadow-xl shadow-black/20">
-                <h2 className="mb-4 flex items-center gap-2 font-mono text-[12px] font-bold uppercase tracking-wider text-[#c1c6d7]">
-                  <span className="material-symbols-outlined text-[16px]">link</span>
-                  Resources
-                </h2>
-                {lesson?.document_key && (
-                  <div className="mb-4 rounded-xl border border-[#adc7ff]/25 bg-[#adc7ff]/5 p-3">
+              <section className="order-3 rounded-2xl border border-[#24dfba]/45 bg-[linear-gradient(145deg,rgba(36,223,186,0.12),rgba(17,24,39,0.96)_58%)] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.28),0_0_24px_rgba(36,223,186,0.08)]">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="flex items-center gap-2 text-[17px] font-extrabold text-[#e7ecff]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#24dfba] text-[#00382c]">
+                      <span className="material-symbols-outlined text-[21px]">menu_book</span>
+                    </span>
+                    Tài liệu học tập
+                  </h2>
+                  <span className="rounded-full border border-[#ffcc7a]/30 bg-[#ffcc7a]/10 px-3 py-1 font-mono text-[10px] font-black uppercase tracking-wider text-[#ffcc7a]">Quan trọng</span>
+                </div>
+                {lesson?.document_key && user?.role !== 'student' && (
+                  <div className="mb-4 rounded-xl border border-[#adc7ff]/30 bg-[#070d19]/65 p-3">
                     <div className="flex items-center gap-2 text-[13px] font-semibold text-[#adc7ff]">
                       <span className={`material-symbols-outlined text-[18px] ${lesson.ai_index_status === 'processing' ? 'animate-spin' : ''}`}>
                         {lesson.ai_index_status === 'ready'
@@ -819,7 +824,7 @@ export function LessonDetailPage() {
                 )}
                 <div className="space-y-3">
                   <button
-                    className="flex w-full items-center gap-3 rounded-xl border border-[#24dfba]/30 bg-[#24dfba]/10 px-4 py-4 text-left transition hover:bg-[#24dfba]/16 disabled:cursor-not-allowed disabled:border-[#414754] disabled:bg-[#0d131f] disabled:opacity-60"
+                    className="group flex w-full items-center gap-3 rounded-xl border border-[#24dfba]/55 bg-[#24dfba]/15 px-4 py-4 text-left shadow-lg shadow-[#24dfba]/5 transition hover:-translate-y-0.5 hover:bg-[#24dfba]/22 hover:shadow-[#24dfba]/15 disabled:cursor-not-allowed disabled:border-[#414754] disabled:bg-[#0d131f] disabled:opacity-60"
                     type="button"
                     disabled={!lesson?.document_key}
                     onClick={() => void handleOpenLessonFile('document')}
@@ -828,10 +833,10 @@ export function LessonDetailPage() {
                       <span className="material-symbols-outlined text-[23px]">description</span>
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-semibold text-[#e7ecff]">Tải tài liệu</span>
+                      <span className="block text-[16px] font-extrabold text-[#e7ecff]">Mở tài liệu bài học</span>
                       <span className="mt-0.5 block text-[12px] text-[#8b90a0]">{lesson?.document_key ? 'Mở tài liệu học tập trong tab mới' : 'Chưa có tài liệu'}</span>
                     </span>
-                    {lesson?.document_key && <span className="material-symbols-outlined text-[18px] text-[#8b90a0]">download</span>}
+                    {lesson?.document_key && <span className="material-symbols-outlined text-[20px] text-[#24dfba] transition group-hover:translate-x-1">open_in_new</span>}
                   </button>
                 </div>
               </section>
