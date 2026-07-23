@@ -144,7 +144,9 @@ export function LessonDetailPage() {
   const [message, setMessage] = useState('');
   const [summary, setSummary] = useState<AISummaryResponse | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
+  const [isIndexingAI, setIsIndexingAI] = useState(false);
   const canManageSummary = user?.role === 'tutor';
+  const canManageAIIndex = user?.role === 'tutor';
   const activeCourseId = useMemo(() => courseId ?? lesson?.course_id ?? '', [courseId, lesson?.course_id]);
 
   useEffect(() => {
@@ -339,6 +341,39 @@ export function LessonDetailPage() {
       setMessage(getAIErrorMessage(error, 'Không thể tóm tắt bài học bằng AI.'));
     } finally {
       setIsSummarizing(false);
+    }
+  }
+
+  async function handleIndexLessonForAI() {
+    if (!lesson?._id || isIndexingAI || !canManageAIIndex) return;
+
+    setIsIndexingAI(true);
+    setMessage('');
+    setLesson((current) => current ? { ...current, ai_index_status: 'processing', ai_index_error: '' } : current);
+
+    try {
+      const result = await api.indexLessonForAI(lesson._id);
+      setLesson((current) => current ? {
+        ...current,
+        ai_index_status: result.status,
+        ai_indexed_at: result.indexed_at,
+        ai_index_error: result.issues.join('; '),
+      } : current);
+      setLessons((current) => current.map((item) => item._id === lesson._id ? {
+        ...item,
+        ai_index_status: result.status,
+        ai_indexed_at: result.indexed_at,
+        ai_index_error: result.issues.join('; '),
+      } : item));
+      setMessage(result.document_indexed ? 'AI đã phân tích document của bài học.' : 'AI chưa đọc được nội dung document. Hãy kiểm tra lại file.');
+    } catch (error) {
+      setLesson((current) => current ? {
+        ...current,
+        ai_index_status: current.ai_index_status === 'processing' ? 'failed' : current.ai_index_status,
+      } : current);
+      setMessage(getAIErrorMessage(error, 'Không thể phân tích document cho AI.'));
+    } finally {
+      setIsIndexingAI(false);
     }
   }
 
@@ -838,6 +873,35 @@ export function LessonDetailPage() {
                     </span>
                     {lesson?.document_key && <span className="material-symbols-outlined text-[20px] text-[#24dfba] transition group-hover:translate-x-1">open_in_new</span>}
                   </button>
+                  {canManageAIIndex && (
+                    <button
+                      className="group flex w-full items-center gap-3 rounded-xl border border-[#adc7ff]/45 bg-[#adc7ff]/10 px-4 py-4 text-left shadow-lg shadow-[#adc7ff]/5 transition hover:-translate-y-0.5 hover:bg-[#adc7ff]/18 hover:shadow-[#adc7ff]/15 disabled:cursor-not-allowed disabled:border-[#414754] disabled:bg-[#0d131f] disabled:opacity-60"
+                      type="button"
+                      disabled={!lesson?.document_key || isIndexingAI || lesson?.ai_index_status === 'processing'}
+                      onClick={() => void handleIndexLessonForAI()}
+                    >
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#adc7ff] text-[#002e68]">
+                        <span className={`material-symbols-outlined text-[23px] ${isIndexingAI || lesson?.ai_index_status === 'processing' ? 'animate-spin' : ''}`}>
+                          {isIndexingAI || lesson?.ai_index_status === 'processing' ? 'progress_activity' : 'psychology'}
+                        </span>
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[16px] font-extrabold text-[#e7ecff]">Phân tích document cho AI</span>
+                        <span className="mt-0.5 block text-[12px] text-[#8b90a0]">
+                          {lesson?.ai_index_status === 'ready'
+                            ? 'Document đã sẵn sàng cho tóm tắt, hỏi đáp và tạo đề'
+                            : lesson?.ai_index_status === 'partial'
+                              ? 'AI đã đọc một phần document; có thể chạy lại nếu cần'
+                              : lesson?.ai_index_status === 'processing' || isIndexingAI
+                                ? 'AI đang đọc nội dung document'
+                                : lesson?.document_key
+                                  ? 'Chuẩn bị dữ liệu để AI dùng trong bài học này'
+                                  : 'Cần có document trước khi phân tích'}
+                        </span>
+                      </span>
+                      <span className="material-symbols-outlined text-[20px] text-[#adc7ff] transition group-hover:translate-x-1">auto_awesome</span>
+                    </button>
+                  )}
                 </div>
               </section>
 

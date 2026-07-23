@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { AppHeader } from '../components/AppHeader';
 import { AppToast } from '../components/AppToast';
 import { RoleSidebar } from '../components/RoleSidebar';
-import { canStudy, getRoleLabel } from '../lib/roleAccess';
+import { getCourseOwnerId, getRoleLabel } from '../lib/roleAccess';
 import {
   api,
   getAIErrorMessage,
@@ -17,6 +17,10 @@ const avatarSrc =
 
 const fieldClass =
   'rounded-xl border border-[#354055] bg-[#070d19] px-3 py-2 text-[13px] text-[#e7ecff] outline-none focus:border-[#8fb7ff] disabled:cursor-not-allowed disabled:opacity-50';
+
+function canUseAIAssistant(role?: string) {
+  return role === 'student' || role === 'tutor';
+}
 
 export function AIAssistantPage() {
   const params = new URLSearchParams(window.location.search);
@@ -36,17 +40,23 @@ export function AIAssistantPage() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!canStudy(user)) return;
+    if (!canUseAIAssistant(user?.role)) return;
 
     setIsLoadingContext(true);
-    api.getMyCourses()
-      .then((enrollments) => {
-        const activeCourses = enrollments
+    const loadCourses = user?.role === 'student'
+      ? api.getMyCourses().then((enrollments) => enrollments
           .filter((item) => item.status === 'active' && typeof item.course_id === 'object')
-          .map((item) => item.course_id as Course);
-        setCourses(activeCourses);
+          .map((item) => item.course_id as Course))
+      : api.getCourses().then((items) => {
+          const userId = user?._id ?? user?.id ?? '';
+          return items.filter((course) => getCourseOwnerId(course) === userId);
+        });
 
-        if (selectedCourseId && !activeCourses.some((course) => course._id === selectedCourseId)) {
+    loadCourses
+      .then((availableCourses) => {
+        setCourses(availableCourses);
+
+        if (selectedCourseId && !availableCourses.some((course) => course._id === selectedCourseId)) {
           setSelectedCourseId('');
           setSelectedLessonId('');
         }
@@ -80,7 +90,7 @@ export function AIAssistantPage() {
   }, [selectedCourseId, selectedLessonId]);
 
   useEffect(() => {
-    if (!canStudy(user)) return;
+    if (!canUseAIAssistant(user?.role)) return;
 
     setIsLoadingHistory(true);
     setHistory([]);
@@ -159,13 +169,13 @@ export function AIAssistantPage() {
     }
   }
 
-  if (!canStudy(user)) {
+  if (!canUseAIAssistant(user?.role)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0d131f] px-4 text-[#dde2f4]">
         <section className="max-w-md rounded-xl border border-[#414754] bg-[#161c28] p-8 text-center">
           <span className="material-symbols-outlined mb-4 text-[48px] text-[#ffb4ab]">lock</span>
           <h1 className="text-[26px] font-semibold">Không có quyền truy cập</h1>
-          <p className="mt-2 text-[#c1c6d7]">Trợ lý AI học tập chỉ dành cho học viên.</p>
+          <p className="mt-2 text-[#c1c6d7]">Trợ lý AI học tập dành cho học viên và giảng viên.</p>
           <a className="mt-6 inline-flex rounded-lg bg-[#adc7ff] px-5 py-3 font-bold text-[#002e68]" href="/dashboard">
             Về bảng điều khiển
           </a>

@@ -52,7 +52,7 @@ export type Lesson = {
 export type LessonAIIndexResult = {
   message: string;
   lesson_id: string;
-  status: 'ready' | 'failed';
+  status: 'ready' | 'partial' | 'failed';
   indexed_at: string;
   document_indexed: boolean;
   issues: string[];

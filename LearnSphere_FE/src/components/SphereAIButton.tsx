@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { api, getAIErrorMessage } from '../services/api';
+import { api, getAIErrorMessage, getStoredUser, type Course, type Lesson } from '../services/api';
 
 type SphereAIButtonProps = {
   className?: string;
@@ -25,11 +25,11 @@ type PopupSize = {
 
 const POPUP_MARGIN = 12;
 const POPUP_GAP = 16;
-const MAX_POPUP_WIDTH = 760;
+const MAX_POPUP_WIDTH = 420;
 const MAX_POPUP_HEIGHT = 640;
 
 function getPopupSize(): PopupSize {
-  const availableWidth = Math.max(320, window.innerWidth - POPUP_MARGIN * 2);
+  const availableWidth = Math.max(300, window.innerWidth - POPUP_MARGIN * 2);
   const availableHeight = Math.max(320, window.innerHeight - POPUP_MARGIN * 2);
 
   return {
@@ -43,13 +43,6 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-const suggestions = [
-  'Giải thích bài này ngắn gọn',
-  'Tóm tắt ý chính của khóa học',
-  'Gợi ý cách học hiệu quả',
-  'Quiz này nên ôn phần nào?',
-];
-
 const initialMessages: ChatMessage[] = [
   {
     id: 'welcome',
@@ -59,9 +52,18 @@ const initialMessages: ChatMessage[] = [
 ];
 
 export function SphereAIButton({ className = '', href = '/ai-assistant' }: SphereAIButtonProps) {
+  const user = getStoredUser();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [selectedLessonId, setSelectedLessonId] = useState('');
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [isLoadingLessons, setIsLoadingLessons] = useState(false);
+  const [isContextOpen, setIsContextOpen] = useState(false);
+  const [contextError, setContextError] = useState('');
   const [popupPosition, setPopupPosition] = useState<PopupPosition>({ x: POPUP_MARGIN, y: POPUP_MARGIN });
   const [popupSize, setPopupSize] = useState<PopupSize>({ width: MAX_POPUP_WIDTH, height: MAX_POPUP_HEIGHT });
   const [isDragging, setIsDragging] = useState(false);
@@ -70,19 +72,113 @@ export function SphereAIButton({ className = '', href = '/ai-assistant' }: Spher
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
 
-  const latestTopic = useMemo(() => {
-    const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user');
-    return latestUserMessage?.content ?? 'Hỗ trợ học tập';
-  }, [messages]);
-
-  const aiContext = useMemo(() => {
+  const initialAIContext = useMemo(() => {
     const queryIndex = href.indexOf('?');
     const params = new URLSearchParams(queryIndex >= 0 ? href.slice(queryIndex + 1) : '');
     return {
-      course_id: params.get('course_id') || undefined,
-      lesson_id: params.get('lesson_id') || undefined,
+      courseId: params.get('course_id') || '',
+      lessonId: params.get('lesson_id') || '',
     };
   }, [href]);
+
+  const selectedCourse = useMemo(() => courses.find((course) => course._id === selectedCourseId), [courses, selectedCourseId]);
+  const selectedLesson = useMemo(() => lessons.find((lesson) => lesson._id === selectedLessonId), [lessons, selectedLessonId]);
+  const assistantPageHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (selectedCourseId) params.set('course_id', selectedCourseId);
+    if (selectedLessonId) params.set('lesson_id', selectedLessonId);
+    const query = params.toString();
+    return `/ai-assistant${query ? `?${query}` : ''}`;
+  }, [selectedCourseId, selectedLessonId]);
+  const userId = user?._id ?? user?.id ?? '';
+
+  useEffect(() => {
+    setSelectedCourseId(initialAIContext.courseId);
+    setSelectedLessonId(initialAIContext.lessonId);
+  }, [initialAIContext.courseId, initialAIContext.lessonId]);
+
+  useEffect(() => {
+    if (!isOpen || !user) return;
+
+    let isActive = true;
+    setIsLoadingCourses(true);
+    setContextError('');
+
+    const loadCourses = user.role === 'student'
+      ? api.getMyCourses().then((enrollments) => enrollments
+          .filter((item) => item.status === 'active' && typeof item.course_id === 'object')
+          .map((item) => item.course_id as Course))
+      : api.getCourses().then((items) => {
+          if (user.role === 'tutor') {
+            return items.filter((course) => {
+              const ownerId = typeof course.created_by === 'object' ? course.created_by._id : course.created_by;
+              return ownerId === userId;
+            });
+          }
+          return items;
+        });
+
+    loadCourses
+      .then((items) => {
+        if (!isActive) return;
+
+        setCourses(items);
+        setSelectedCourseId((current) => {
+          if (!current || items.some((course) => course._id === current)) return current;
+          setSelectedLessonId('');
+          return '';
+        });
+      })
+      .catch((error) => {
+        if (!isActive) return;
+        setCourses([]);
+        setLessons([]);
+        setContextError(getAIErrorMessage(error, 'Không thể tải khóa học cho trợ lý AI.'));
+      })
+      .finally(() => {
+        if (isActive) setIsLoadingCourses(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [isOpen, user?.role, userId]);
+
+  useEffect(() => {
+    if (!isOpen || !selectedCourseId) {
+      setLessons([]);
+      setSelectedLessonId('');
+      return;
+    }
+
+    let isActive = true;
+    setIsLoadingLessons(true);
+    setContextError('');
+
+    api.getLessons(selectedCourseId)
+      .then((items) => {
+        if (!isActive) return;
+
+        setLessons(items);
+        setSelectedLessonId((current) => {
+          if (!current || items.some((lesson) => lesson._id === current)) return current;
+          return '';
+        });
+      })
+      .catch((error) => {
+        if (!isActive) return;
+        setLessons([]);
+        setSelectedLessonId('');
+        setContextError(getAIErrorMessage(error, 'Không thể tải bài học cho trợ lý AI.'));
+      })
+      .finally(() => {
+        if (isActive) setIsLoadingLessons(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [isOpen, selectedCourseId]);
 
   function openChat() {
     const size = getPopupSize();
@@ -140,6 +236,17 @@ export function SphereAIButton({ className = '', href = '/ai-assistant' }: Spher
 
   async function sendMessage(content: string) {
     const normalized = content.trim();
+    if (!user) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: `assistant-login-${Date.now()}`,
+          role: 'assistant',
+          content: 'Bạn cần đăng nhập để Sphere AI có thể truy cập khóa học và bài học của bạn.',
+        },
+      ]);
+      return;
+    }
     if (!normalized || isSending) return;
 
     const nextUserMessage: ChatMessage = {
@@ -155,7 +262,8 @@ export function SphereAIButton({ className = '', href = '/ai-assistant' }: Spher
     try {
       const result = await api.chatWithAI({
         message: normalized,
-        ...aiContext,
+        course_id: selectedCourseId || undefined,
+        lesson_id: selectedLessonId || undefined,
       });
       setMessages((current) => [
         ...current,
@@ -197,6 +305,18 @@ export function SphereAIButton({ className = '', href = '/ai-assistant' }: Spher
           }}
         >
           <button
+            className="absolute right-14 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-[#414754] bg-[#242a37] text-[#c1c6d7] shadow-lg transition hover:border-[#adc7ff]/50 hover:text-[#adc7ff]"
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => {
+              window.location.href = assistantPageHref;
+            }}
+            aria-label="Mở trang trợ lý AI"
+            title="Mở trang trợ lý AI"
+          >
+            <span className="material-symbols-outlined text-[19px]">open_in_full</span>
+          </button>
+          <button
             className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-[#414754] bg-[#242a37] text-[#c1c6d7] shadow-lg transition hover:border-[#adc7ff]/50 hover:text-[#adc7ff]"
             type="button"
             onPointerDown={(event) => event.stopPropagation()}
@@ -205,66 +325,9 @@ export function SphereAIButton({ className = '', href = '/ai-assistant' }: Spher
           >
             <span className="material-symbols-outlined text-[19px]">close</span>
           </button>
-          <aside className="hidden w-52 shrink-0 flex-col gap-5 border-r border-[#414754] bg-[#161c28] p-4 xl:flex">
-            <div className="rounded-xl border border-[#adc7ff]/40 bg-[#1a202c] p-4">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#4a8eff]/20 text-[#adc7ff]">
-                  <span className="material-symbols-outlined">smart_toy</span>
-                </span>
-                <div>
-                  <h3 className="font-mono text-[13px] font-bold text-[#adc7ff]">Sphere AI</h3>
-                  <p className="text-[10px] uppercase tracking-wider text-[#8b90a0]">Powered by LearnSphere</p>
-                </div>
-              </div>
-            </div>
-
-            <button
-              className="rounded-xl bg-[#adc7ff] px-4 py-3 font-mono text-[12px] font-bold text-[#002e68] transition active:scale-95"
-              type="button"
-              onClick={() => {
-                setMessages(initialMessages);
-                setInput('');
-              }}
-            >
-              <span className="material-symbols-outlined mr-1 align-[-4px] text-[17px]">add</span>
-              Phiên mới
-            </button>
-
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
-              <section>
-                <h4 className="mb-2 px-2 text-[10px] font-bold uppercase tracking-widest text-[#8b90a0]">Lịch sử</h4>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-3 rounded-lg bg-[#4a8eff]/10 p-3 font-semibold text-[#adc7ff]">
-                    <span className="material-symbols-outlined text-[18px]">chat</span>
-                    <span className="truncate text-[13px]">{latestTopic}</span>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-lg p-3 text-[#c1c6d7]">
-                    <span className="material-symbols-outlined text-[18px]">history</span>
-                    <span className="truncate text-[13px]">Ôn tập bài học</span>
-                  </div>
-                </div>
-              </section>
-
-              <section>
-                <h4 className="mb-2 px-2 text-[10px] font-bold uppercase tracking-widest text-[#8b90a0]">Chủ đề</h4>
-                {['Khái niệm khó', 'Quiz & đáp án', 'Lộ trình học'].map((topic) => (
-                  <button
-                    key={topic}
-                    className="flex w-full items-center gap-3 rounded-lg p-3 text-left text-[#c1c6d7] transition hover:bg-[#2f3542]"
-                    type="button"
-                    onClick={() => void sendMessage(topic)}
-                  >
-                    <span className="material-symbols-outlined text-[18px] text-[#24dfba]">topic</span>
-                    <span className="truncate text-[13px]">{topic}</span>
-                  </button>
-                ))}
-              </section>
-            </div>
-          </aside>
-
           <div className="flex min-w-0 flex-1 flex-col">
             <header
-              className={`flex h-16 cursor-grab touch-none select-none items-center justify-between border-b border-[#414754] bg-[#161c28] px-6 pr-16 ${isDragging ? 'cursor-grabbing' : ''}`}
+              className={`flex h-16 cursor-grab touch-none select-none items-center justify-between border-b border-[#414754] bg-[#161c28] px-6 pr-28 ${isDragging ? 'cursor-grabbing' : ''}`}
               onPointerDown={handleDragStart}
               onPointerMove={handleDragMove}
               onPointerUp={handleDragEnd}
@@ -283,6 +346,91 @@ export function SphereAIButton({ className = '', href = '/ai-assistant' }: Spher
                 </div>
               </div>
             </header>
+
+            <section className="border-b border-[#414754] bg-[#111827]">
+              <button
+                className="flex w-full items-center gap-3 px-5 py-3 text-left transition hover:bg-[#161f2e]"
+                type="button"
+                onClick={() => setIsContextOpen((current) => !current)}
+                aria-expanded={isContextOpen}
+              >
+                <span className="material-symbols-outlined text-[18px] text-[#adc7ff]">tune</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-mono text-[10px] font-bold uppercase tracking-widest text-[#8b90a0]">Ngữ cảnh</span>
+                  <span className="mt-0.5 block truncate text-[13px] text-[#e7ecff]">
+                    {selectedLesson?.title ?? selectedCourse?.title ?? 'Hỏi chung'}
+                  </span>
+                </span>
+                <span className={`material-symbols-outlined text-[20px] text-[#8b90a0] transition ${isContextOpen ? 'rotate-180' : ''}`}>expand_more</span>
+              </button>
+
+              {isContextOpen && (
+                <div className="space-y-3 border-t border-[#253047] px-5 py-3">
+                  {user ? (
+                    <>
+                      <label className="block min-w-0">
+                        <span className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-widest text-[#8b90a0]">Khóa học</span>
+                        <select
+                          className="w-full rounded-xl border border-[#354055] bg-[#070d19] px-3 py-2 text-[13px] text-[#e7ecff] outline-none transition focus:border-[#8fb7ff] disabled:cursor-not-allowed disabled:opacity-60"
+                          value={selectedCourseId}
+                          disabled={isLoadingCourses || isSending}
+                          onChange={(event) => {
+                            setSelectedCourseId(event.target.value);
+                            setSelectedLessonId('');
+                            setMessages((current) => current.length === 1 ? current : [
+                              ...current,
+                              {
+                                id: `context-${Date.now()}`,
+                                role: 'assistant',
+                                content: event.target.value
+                                  ? 'Mình đã đổi ngữ cảnh khóa học. Câu hỏi tiếp theo sẽ bám theo khóa học bạn chọn.'
+                                  : 'Mình đã chuyển về chế độ hỏi chung.',
+                              },
+                            ]);
+                          }}
+                        >
+                          <option value="">Hỏi chung</option>
+                          {courses.map((course) => (
+                            <option key={course._id} value={course._id}>{course.title}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block min-w-0">
+                        <span className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-widest text-[#8b90a0]">Bài học</span>
+                        <select
+                          className="w-full rounded-xl border border-[#354055] bg-[#070d19] px-3 py-2 text-[13px] text-[#e7ecff] outline-none transition focus:border-[#8fb7ff] disabled:cursor-not-allowed disabled:opacity-60"
+                          value={selectedLessonId}
+                          disabled={!selectedCourseId || isLoadingLessons || isSending}
+                          onChange={(event) => {
+                            setSelectedLessonId(event.target.value);
+                            setMessages((current) => current.length === 1 ? current : [
+                              ...current,
+                              {
+                                id: `context-${Date.now()}`,
+                                role: 'assistant',
+                                content: event.target.value
+                                  ? 'Mình đã đổi sang bài học này. Câu hỏi tiếp theo sẽ ưu tiên nội dung của bài học đã chọn.'
+                                  : 'Mình đã chuyển về phạm vi toàn bộ khóa học.',
+                              },
+                            ]);
+                          }}
+                        >
+                          <option value="">{selectedCourseId ? 'Toàn bộ khóa học' : 'Chọn khóa học trước'}</option>
+                          {lessons.map((lesson) => (
+                            <option key={lesson._id} value={lesson._id}>{lesson.order_index}. {lesson.title}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </>
+                  ) : (
+                    <div className="rounded-xl border border-[#ffcc7a]/30 bg-[#ffcc7a]/10 px-4 py-3 text-[13px] leading-5 text-[#ffcc7a]">
+                      Đăng nhập để chọn khóa học, bài học và hỏi AI theo nội dung học tập của bạn.
+                    </div>
+                  )}
+                  {contextError && <p className="text-[12px] leading-5 text-[#ffb4ab]">{contextError}</p>}
+                </div>
+              )}
+            </section>
 
             <div className="min-h-0 flex-1 space-y-6 overflow-y-auto bg-[#0d131f] p-5 md:p-6">
               {messages.map((message) => (
@@ -321,31 +469,17 @@ export function SphereAIButton({ className = '', href = '/ai-assistant' }: Spher
               )}
             </div>
 
-            <footer className="space-y-4 border-t border-[#414754] bg-gradient-to-t from-[#0d131f] via-[#0d131f] to-transparent p-5">
-              <div className="flex flex-wrap gap-2">
-                {suggestions.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    className="rounded-full border border-[#414754] bg-[#161c28] px-4 py-2 text-[12px] leading-5 text-[#c1c6d7] transition hover:border-[#adc7ff] hover:text-[#adc7ff] disabled:opacity-50"
-                    type="button"
-                    onClick={() => void sendMessage(suggestion)}
-                    disabled={isSending}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-
+            <footer className="border-t border-[#414754] bg-gradient-to-t from-[#0d131f] via-[#0d131f] to-transparent p-4">
               <form className="relative" onSubmit={handleSubmit}>
                 <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-[#adc7ff] to-[#24dfba] opacity-20 blur transition focus-within:opacity-40" />
                 <div className="relative flex items-end gap-3 rounded-2xl border border-[#414754] bg-[#242a37] p-3">
                   <textarea
                     ref={inputRef}
-                    className="max-h-28 min-h-[52px] min-w-0 flex-1 resize-none border-none bg-transparent px-2 py-3 text-[15px] leading-6 text-[#e7ecff] outline-none placeholder:text-[#8b90a0] focus:ring-0"
-                    placeholder="Hỏi AI..."
+                    className="max-h-28 min-h-[48px] min-w-0 flex-1 resize-none border-none bg-transparent px-2 py-2 text-[15px] leading-6 text-[#e7ecff] outline-none placeholder:text-[#8b90a0] focus:ring-0"
+                    placeholder={user ? 'Hỏi AI...' : 'Đăng nhập để hỏi AI...'}
                     maxLength={4000}
                     rows={2}
-                    disabled={isSending}
+                    disabled={!user || isSending}
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
                     onKeyDown={(event) => {
@@ -355,7 +489,7 @@ export function SphereAIButton({ className = '', href = '/ai-assistant' }: Spher
                       }
                     }}
                   />
-                  <button className="mb-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#adc7ff] text-[#002e68] transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50" type="submit" disabled={!input.trim() || isSending} aria-label="Gửi">
+                  <button className="mb-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#adc7ff] text-[#002e68] transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50" type="submit" disabled={!user || !input.trim() || isSending} aria-label="Gửi">
                     <span className="material-symbols-outlined">send</span>
                   </button>
                 </div>

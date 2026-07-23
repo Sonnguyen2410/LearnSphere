@@ -71,7 +71,7 @@ function getRoute(pathname: string): RouteDefinition {
     '/signup': { element: <SignupPage /> },
     '/dashboard': { element: <DashboardPage />, requiresAuth: true },
     '/my-courses': { element: <MyCoursesPage />, requiresAuth: true, roles: ['student'] },
-    '/ai-assistant': { element: <AIAssistantPage />, requiresAuth: true, roles: ['student'] },
+    '/ai-assistant': { element: <AIAssistantPage />, requiresAuth: true, roles: ['student', 'tutor'] },
     '/courses': { element: <CourseCatalogPage /> },
     '/course-detail': { element: <CourseDetailPage />, requiresAuth: true },
     '/lesson-detail': { element: <LessonDetailPage />, requiresAuth: true },
